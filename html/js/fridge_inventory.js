@@ -20,12 +20,16 @@
 
 class FridgeInventory {
   constructor() {
-    // 状态词（标红）：命中括号内这些词就标红
     // 所有括号备注一律小字标红（不做关键词识别，由用户用括号自行控制）
     this.BODY_PX = 12;   // 正文
     this.NOTE_PX = 10;   // 括号备注小字
     this.zones = [];
     this.title = '冰箱库存';
+    this.style = 'panel'; // 渲染风格: 'table'(表格) / 'panel'(信息面板)
+    // 字号满幅测试状态
+    this.testSize = 10; // 当前测试字号 (8/10/12)
+    // 满幅测试用的文本（去掉标点空白后逐字填屏）
+    this.testText = '我在漫宿高处的房间居住了一小段时间，而后由三尖之门返回，我的躯体在灰烬中跃跃欲出。我已毛发全无，如大理石般千古不朽，铸炉之火仍在我内里燃烧。我具有〖足以塑形的气力〗。我再不会变老。也许我将反叛。也许有朝一日，我将升得更高。我在漫宿高处的房间居住了一小段时间，而后由三尖之门返回，我撕去了我旧肉体那湿黏的条条褴褛。我的新躯体外表光滑，内里像甜美的果实般鲜红。我的四肢牢固如缆绳。我的五感好似刀子。我不会变老。狂暴之门是一道旧伤口，不会轻易开启，但它还是再度开启了。连石源之神都使用过此门，那么在祂们前有多少神用过呢？辉光是一个疑问，我们所有人，作为燃料供给我们的沐光明者的见证者与我，都以肯定作答。地撒银光，晚风凉爽；夜晚的寂静引来言语，如暗色丝绒引来手指抚弄。蛾在黑暗中寻见光，我亦如是。一种似有似无的惆怅染上了我。每当灯之准则放光时，我便可以多记起一些残篇知识。脑海中的灰尘一扫而空，至少暂时如此。我在半夜惊醒。我的手掌，我的脸上都渗出汗珠。慢慢地，我松开紧攥的拳头。我又滑落回睡梦中。但某种东西留下了，好像房间角落的蛛网。沙皇时代我曾在泰加林狩猎，那里的深处有一个虎口形状的湖。也许我的大敌不会去那里找我，如果他去了，那就是时候奋起反抗了。我们交谈时，万查妮一寸一寸靠近。她握住我手时，她的手指传来机械般的力道，她的皮肤有着余烬般的热力。“我不是光，”她警告我说，“我们应当对彼此宽容。”埃尔里奇已基本能管住自己在谈话中不用刀剔牙了。但他还不能把刀一直放在靴子里不拔出来。埃尔里奇正在耐心等待再次捅人刀子的时机。芮妮拉在三个不相邻的辖区里被判三次无罪释放。她很可能永远不会因为任何事获罪。悲伤时，她便闭口不言。但她时常悲伤。我如今知道了该做出什么姿势，手该恰到好处地放在何处，慢慢领她那可爱的颈脖靠上我肩。我们的生活是幸福的。我们看上去是一对般配的恋人。当然了，她的哥哥时而来访——但那是因为我出门旅行时她寂寞，需要陪伴。我的脑子装满了的知识，快要撑裂颅骨。“只欲求而不行动者于世有害。”“与其哺育只欲求而不行动的婴孩，不如将其尽早扼杀在摇篮中。”“我们指引前路，我们照明驱暗，我们无有怜悯之心。”秘密温柔，夜晚更加温柔。大海会讲述，但是聆听不是何时都是明智的。灰暗的海水每天早晨都冲击着岩礁，又整夜整夜地对我发出低吼。每一天的日出都来得比前一日更早。风也变得更加温柔。春天快要来了。';
   }
 
   // ====== Excel 粘贴解析 ======
@@ -83,31 +87,216 @@ class FridgeInventory {
 
   /**
    * 把单个单元格解析为 Item，拆分括号备注
-   * 规则：只要有中英文括号，括号内一律作为备注（小字标红）
+   * 规则：
+   *  - 中文括号（）统一替换为英文括号()，更小不占地方
+   *  - 支持备注在末尾（如 "葡萄(新)"）或前置（如 "(新)葡萄"）
+   *  - 括号内一律作为备注（小字标红）
    * @param {string} text
    * @returns {{text: string, note: string|null, noteRed: boolean}}
    */
   parseItem(text) {
-    // 匹配中英文括号内的备注
-    const m = text.match(/^(.*?)[(（]([^)）]*)[)）]$/);
-    if (m && m[1]) {
+    // 中文括号统一转英文括号
+    const normalized = text.replace(/（/g, '(').replace(/）/g, ')');
+    const trimmed = normalized.trim();
+
+    // 末尾备注: xxx(备注)
+    let m = trimmed.match(/^(.*?)[(]([^)]*)[)]$/);
+    if (m && m[1].trim()) {
       return { text: m[1].trim(), note: m[2].trim(), noteRed: true };
     }
-    return { text: text.trim(), note: null, noteRed: false };
+    // 前置备注: (备注)xxx
+    m = trimmed.match(/^[(]([^)]*)[)](.*)$/);
+    if (m && m[2].trim()) {
+      return { text: m[2].trim(), note: m[1].trim(), noteRed: true };
+    }
+    return { text: trimmed, note: null, noteRed: false };
   }
 
   // ====== 渲染 ======
 
   /**
-   * 渲染库存表格到 canvas
-   * 布局：三列 [区名 | 分类名 | 内容]，分类是行
-   *  - 区名列：跨该区所有行（合并单元格效果，垂直居中）
-   *  - 分类名列：每个分类占一行区域（合并单元格效果，垂直居中）
-   *  - 内容列：条目横排 + 自动换行
+   * 渲染入口：根据 this.style 选择风格
+   *  - 'table': 原表格风格（区名|分类名|内容 三列，带表格线）
+   *  - 'panel': 信息面板风格（区名24px大字，无表格线，留白分区）
+   */
+  render(canvas, ctx) {
+    if (this.style === 'table') {
+      return this.renderStyleTable(canvas, ctx);
+    }
+    return this.renderStylePanel(canvas, ctx);
+  }
+
+  /**
+   * 方向 A：信息面板风格
+   *  - 区名 24px 大字（清晰整数倍）
+   *  - 无表格线，靠留白分区
+   *  - 分类名 + 条目横排，层级缩进
+   *  - 红色仅备注
    * @param {HTMLCanvasElement} canvas
    * @param {CanvasRenderingContext2D} ctx
    */
-  render(canvas, ctx) {
+  renderStylePanel(canvas, ctx) {
+    const W = canvas.width;
+    const H = canvas.height;
+    const BODY = this.BODY_PX;
+    const NOTE = this.NOTE_PX;
+    const fontBody = 'FusionPixel12';
+    const fontNote = 'FusionPixel10';
+    const black = '#000000';
+    const red = '#ff0000';
+
+    ctx.imageSmoothingEnabled = false;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, W, H);
+
+    // 布局
+    const margin = 8;
+    const top = 4;        // 顶部留白压缩（给内容省空间）
+    const bottom = H - 6; // 底部留白
+    const left = margin;
+    const right = W - margin;
+
+    // 右下角二维码（60px）
+    const QR_SIZE = 60;
+    const qrX = W - QR_SIZE - 8;
+    const qrY = H - QR_SIZE - 8;
+
+    // 区名 20px（10 字体放大 2 倍，清晰），正文 12px
+    const ZONE_PX = 20;
+    const zoneFont = 'FusionPixel10';
+    const rowH = Math.round(BODY * 1.3); // 16
+    const zoneRowH = ZONE_PX + 4; // 24（20px字 + 少量行距，压缩顶部区名行）
+
+    // 分类名列宽 = 最长分类名(含括号)宽 + 极小间距
+    ctx.font = `${BODY}px "${fontBody}"`;
+    let maxCatW = 0;
+    this.zones.forEach((z) => {
+      z.categories.forEach((c) => {
+        // 分类名含〔〕括号，计算完整宽度
+        const label = `〔${c.name}〕`;
+        maxCatW = Math.max(maxCatW, ctx.measureText(label).width);
+      });
+    });
+    const catBoxW = Math.round(maxCatW) + 4; // 分类名列宽（极小间距）
+    const catBoxX = left; // 分类名左缘（与区名对齐，左侧）
+    const itemX = catBoxX + catBoxW; // 内容列起点（分类名右侧）
+
+    // 布局：每区 = 区名行 + 内容行
+    let totalHeight = 0;
+    const zoneLayouts = [];
+    for (const zone of this.zones) {
+      const cats = [];
+      let catStartRow = 0;
+      for (const cat of zone.categories) {
+        // 内容列宽 = right - itemX（二维码避让在此列内处理）
+        const itemColFullW = right - itemX;
+        const rows = [];
+        let curLine = [];
+        let curWidth = 0;
+        const maxWidth = itemColFullW - 8;
+        const segs = cat.items.map((item) => {
+          const textW = ctx.measureText(item.text).width;
+          let noteSeg = null;
+          if (item.note) {
+            ctx.font = `${NOTE}px "${fontNote}"`;
+            noteSeg = { text: `(${item.note})`, width: ctx.measureText(`(${item.note})`).width };
+            ctx.font = `${BODY}px "${fontBody}"`;
+          }
+          return { item, textW, noteSeg };
+        });
+        for (const seg of segs) {
+          const segW = seg.textW + (seg.noteSeg ? seg.noteSeg.width : 0);
+          const sp = curLine.length ? 8 : 0;
+          if (curWidth + sp + segW > maxWidth && curLine.length) {
+            rows.push(curLine);
+            curLine = [];
+            curWidth = 0;
+          }
+          const gap = curLine.length ? 8 : 0;
+          curWidth += gap + segW;
+          curLine.push(seg);
+        }
+        if (curLine.length) rows.push(curLine);
+        if (!rows.length) rows.push([]);
+        cats.push({ name: cat.name, rows, rowCount: rows.length, startRow: catStartRow });
+        catStartRow += rows.length;
+      }
+      zoneLayouts.push({ name: zone.name, cats, contentRows: catStartRow });
+      totalHeight += zoneRowH + catStartRow * rowH;
+    }
+
+    // 超屏处理：行高固定 16px（备注清晰），压缩顶部/区留白，仍放不下则省略底部内容
+    const availH = bottom - top;
+    const ZONE_GAP = 3; // 区之间留白（压缩）
+    const fixedCost = zoneLayouts.length * (zoneRowH + ZONE_GAP);
+    const contentRowsTotal = zoneLayouts.reduce((a, z) => a + z.contentRows, 0);
+    // 行高固定 16px，不再压缩（否则备注发糊）
+    let effRowH = rowH; // 16
+    // 如果 16px 行高放不下，内容会在绘制时被省略（break），保证不溢出
+    // 同时压缩顶部留白已在 top 定义处处理
+
+    // ---- 绘制 ----
+    let y = top;
+    for (const zone of zoneLayouts) {
+      // 区名（20px，左对齐）
+      ctx.font = `${ZONE_PX}px "${zoneFont}"`;
+      ctx.textBaseline = 'alphabetic';
+      ctx.textAlign = 'left';
+      ctx.fillStyle = black;
+      const zm = ctx.measureText(zone.name);
+      const zAscent = zm.actualBoundingBoxAscent || ZONE_PX;
+      const zDescent = zm.actualBoundingBoxDescent || 0;
+      // 底部保护：区名行也需在可用范围内
+      if (y + zoneRowH <= bottom) {
+        ctx.fillText(zone.name, left, y + zoneRowH / 2 + (zAscent - zDescent) / 2);
+      }
+      y += zoneRowH;
+
+      for (const cat of zone.cats) {
+        const catTop = y;
+        // 分类名用〔〕括号包裹（如 〔饮料〕），右对齐到内容列起点，紧贴内容
+        ctx.font = `${BODY}px "${fontBody}"`;
+        ctx.textBaseline = 'alphabetic';
+        ctx.textAlign = 'right';
+        ctx.fillStyle = black;
+        const catLabel = `〔${cat.name}〕`;
+        const cm = ctx.measureText(catLabel);
+        const cAscent = cm.actualBoundingBoxAscent || BODY;
+        const cDescent = cm.actualBoundingBoxDescent || 0;
+        // 分类名画在第一行，垂直居中，右对齐到 itemX-2（紧贴内容）
+        const catFirstRowCenter = catTop + effRowH / 2;
+        ctx.fillText(catLabel, itemX - 2, catFirstRowCenter + (cAscent - cDescent) / 2);
+        ctx.textAlign = 'left';
+
+        // 内容行：从分类名右侧（固定列宽 catBoxW）开始，不侵占分类名
+        for (let r = 0; r < cat.rows.length; r++) {
+          const rowTop = catTop + r * effRowH;
+          // 底部保护：超出可用高度则不绘制（避免内容跑到屏幕外/被切割）
+          if (rowTop + effRowH > bottom) break;
+          const inQR = (rowTop + effRowH) > qrY;
+          const rowRight = inQR ? (qrX - 4) : right;
+          const rowItemW = rowRight - itemX;
+          this.drawItemRow(ctx, cat.rows[r], itemX, rowTop, rowItemW, effRowH,
+            BODY, NOTE, fontBody, fontNote, black, red);
+        }
+        y = catTop + cat.rowCount * effRowH;
+      }
+
+      // 区之间留白
+      y += ZONE_GAP;
+    }
+
+    // ---- 右下角二维码 ----
+    this.drawQRCode(canvas, ctx, W, H, QR_SIZE);
+
+    return { totalHeight: y - top, effRowH };
+  }
+
+  /**
+   * 方向 B：原表格风格（区名|分类名|内容 三列，带表格线，合并单元格）
+   * 保留旧版，作为可切换风格之一
+   */
+  renderStyleTable(canvas, ctx) {
     const W = canvas.width;
     const H = canvas.height;
     const BODY = this.BODY_PX;
@@ -129,10 +318,10 @@ class FridgeInventory {
     const right = W - margin;
     const totalW = right - left; // 384
 
-    // 右下角二维码（60px），"嵌"在表格右下角，只避让该区域内容
+    // 右下角二维码（60px），"嵌"在表格右下角
     const QR_SIZE = 60;
-    const qrX = W - QR_SIZE - 8; // 二维码左缘
-    const qrY = H - QR_SIZE - 8; // 二维码上缘
+    const qrX = W - QR_SIZE - 8;
+    const qrY = H - QR_SIZE - 8;
 
     // 测量字体用于动态列宽
     ctx.font = `${BODY}px "${fontBody}"`;
@@ -144,7 +333,7 @@ class FridgeInventory {
     });
     const zoneColW = Math.round(maxZoneW) + 12;
 
-    // 分类名列宽：取所有分类名最大宽度 + 边距（保证"半成品(即食)"不重叠）
+    // 分类名列宽：取所有分类名最大宽度 + 边距
     let maxCatW = 0;
     this.zones.forEach((z) => {
       z.categories.forEach((c) => {
@@ -183,9 +372,7 @@ class FridgeInventory {
         // 内容行（横排 + 换行，底部进入二维码区域的行右边界收窄）
         for (let r = 0; r < cat.rows.length; r++) {
           const rowTop = top + (catGlobalRow + r) * effRowH;
-          // 该行是否落入二维码垂直范围
           const inQR = (rowTop + effRowH) > qrY;
-          // 该行可用右边界（进二维码则收窄到二维码左缘）
           const rowRight = inQR ? (qrX - 4) : right;
           const rowItemW = rowRight - catRightX;
           this.drawItemRow(ctx, cat.rows[r], catRightX, rowTop, rowItemW, effRowH,
@@ -200,7 +387,7 @@ class FridgeInventory {
     // ---- 画表格线 ----
     this.drawGrid(ctx, layout, left, right, top, bottom, effRowH, zoneColW, catColW, black);
 
-    // ---- 右下角二维码（嵌在表格右下角）----
+    // ---- 右下角二维码 ----
     this.drawQRCode(canvas, ctx, W, H, QR_SIZE);
 
     return { totalRows, totalHeight: totalRows * effRowH, effRowH };
@@ -461,6 +648,15 @@ class FridgeInventory {
     }
   }
   /**
+   * 切换渲染风格并刷新预览
+   * @param {string} style 'panel' 或 'table'
+   */
+  setStyle(style) {
+    this.style = (style === 'table') ? 'table' : 'panel';
+    this.refreshPreview();
+  }
+
+  /**
    * 初始化事件绑定
    */
   init() {
@@ -481,14 +677,32 @@ class FridgeInventory {
 
     // 预加载像素字体
     const fontLoadPromises = [];
-    ['FusionPixel10', 'FusionPixel12'].forEach((fam) => {
-      [10, 12].forEach((px) => {
-        fontLoadPromises.push(document.fonts.load(`${px}px "${fam}"`, '冰箱库存'));
+    ['FusionPixel', 'FusionPixel10', 'FusionPixel12'].forEach((fam) => {
+      [8, 10, 12, 16, 20, 24].forEach((px) => {
+        fontLoadPromises.push(document.fonts.load(`${px}px "${fam}"`, '冷藏冰箱库存'));
       });
     });
     Promise.allSettled(fontLoadPromises).then(() => {
       self.refreshPreview();
+      self.refreshFillTest();
     });
+
+    // 字号满幅测试
+    const testSizeBtns = document.querySelectorAll('.test-size-btn');
+    testSizeBtns.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        self.testSize = parseInt(btn.dataset.size, 10);
+        testSizeBtns.forEach((b) => b.classList.toggle('active', b === btn));
+        self.refreshFillTest();
+      });
+    });
+    const testSendBtn = document.getElementById('fridge-test-send-btn');
+    if (testSendBtn) testSendBtn.addEventListener('click', () => self.sendTestToScreen());
+    const fontsizeSendBtn = document.getElementById('fridge-fontsize-send-btn');
+    if (fontsizeSendBtn) fontsizeSendBtn.addEventListener('click', () => self.sendFontSizeTestToScreen());
+
+    // 初始满幅测试预览
+    this.refreshFillTest();
   }
 
   /**
@@ -525,8 +739,8 @@ class FridgeInventory {
     // 渲染前确保字体已加载（12px 字体文件大，手机端网络慢可能未就绪）
     // 用 try-catch 暴露手机端具体错误
     try {
-      this.render(canvas, ctx);
-      this.updateStats(zones);
+      const result = this.render(canvas, ctx);
+      this.updateStats(zones, result);
     } catch (e) {
       console.error('冰箱库存渲染失败:', e);
       ctx.fillStyle = '#ffffff';
@@ -543,7 +757,7 @@ class FridgeInventory {
   /**
    * 更新统计信息
    */
-  updateStats(zones) {
+  updateStats(zones, result) {
     const el = document.getElementById('fridge-stats');
     if (!el) return;
     if (!zones) {
@@ -556,7 +770,246 @@ class FridgeInventory {
       cats += z.categories.length;
       z.categories.forEach((c) => (items += c.items.length));
     });
-    el.textContent = `${zones.length}区 ${cats}分类 ${items}条目`;
+    let extra = '';
+    if (result && result.effRowH) {
+      extra = ` 行高${result.effRowH}px${result.totalHeight ? ` 总高${result.totalHeight}` : ''}`;
+    }
+    el.textContent = `${zones.length}区 ${cats}分类 ${items}条目${extra}`;
+  }
+
+  /**
+   * 根据基准字号返回对应字体族名
+   */
+  fontFamily(px) {
+    // 8px -> FusionPixel, 10px -> FusionPixel10, 12px -> FusionPixel12
+    if (px <= 8) return 'FusionPixel';
+    if (px <= 10) return 'FusionPixel10';
+    return 'FusionPixel12';
+  }
+
+  /**
+   * 渲染"字号满幅测试"：用指定字号把整屏填满文字
+   * 使用给定的文本，逐字排布成满屏，展示该字号的信息量
+   */
+  renderFillTest(canvas, ctx, sizePx) {
+    const W = canvas.width;
+    const H = canvas.height;
+    const px = sizePx;
+    const fontFamily = this.fontFamily(px);
+    ctx.font = `${px}px "${fontFamily}"`;
+    ctx.textBaseline = 'top';
+    ctx.textAlign = 'left';
+    ctx.imageSmoothingEnabled = false;
+
+    // 白底
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#000000';
+
+    // 行高 = 字号 * 1.3（像素字体行距）
+    const lineH = Math.round(px * 1.3);
+    // 每行能容纳的字数：400 宽 / 每字宽（中文字宽=字号）
+    const charsPerLine = Math.floor(W / px);
+    // 能容纳的行数
+    const lines = Math.floor((H - 4) / lineH);
+
+    // 测试文本：去掉标点与空白，逐字填充
+    const rawText = this.testText;
+    const cleanText = rawText.replace(/[\s　、。，；：""''《》〈〉（）【】〖〗—…·!?！？]/g, '');
+    const chars = Array.from(cleanText);
+    const totalNeeded = charsPerLine * lines;
+
+    // 逐行填入字符（超出部分循环复用，保证填满）
+    let y = 2;
+    let ci = 0;
+    for (let l = 0; l < lines; l++) {
+      let line = '';
+      for (let c = 0; c < charsPerLine; c++) {
+        line += chars.length ? chars[ci % chars.length] : ' ';
+        ci++;
+      }
+      ctx.fillText(line, 2, y);
+      y += lineH;
+    }
+
+    // 返回统计信息，供 info 显示
+    return {
+      size: px,
+      charsPerLine: charsPerLine,
+      lines: lines,
+      totalChars: charsPerLine * lines,
+      sourceChars: chars.length,
+    };
+  }
+
+  /**
+   * 刷新字号测试预览
+   */
+  refreshFillTest() {
+    const canvas = document.getElementById('fridge-test-preview');
+    const ctx = canvas.getContext('2d');
+    canvas.width = 400;
+    canvas.height = 300;
+    const info = this.renderFillTest(canvas, ctx, this.testSize);
+    const infoEl = document.getElementById('fridge-test-info');
+    if (infoEl) {
+      infoEl.textContent =
+        `${info.size}px：每行 ${info.charsPerLine} 字 × ${info.lines} 行，` +
+        `满屏可容纳 ${info.totalChars} 字（源文本 ${info.sourceChars} 字${info.sourceChars >= info.totalChars ? '' : '，已循环复用'}）`;
+    }
+  }
+
+  /**
+   * 把测试图渲染到主画布（供发送）
+   */
+  renderTestToMain() {
+    this.renderFillTest(canvas, ctx, this.testSize);
+  }
+
+  /**
+   * 发送测试图到墨水屏
+   */
+  async sendTestToScreen() {
+    if (!epdCharacteristic) {
+      addLog("未连接设备，请先连接蓝牙");
+      showToast("请先连接设备");
+      return;
+    }
+    // 先确保主画布尺寸
+    const canvasSize = document.getElementById('canvasSize').value;
+    if (canvasSize !== '4.2_400_300') {
+      const sizeSelect = document.getElementById('canvasSize');
+      sizeSelect.value = '4.2_400_300';
+      updateCanvasSize();
+    }
+    document.getElementById('ditherMode').value = 'threeColor';
+
+    // 渲染测试图到主画布
+    this.renderTestToMain();
+
+    startTime = new Date().getTime();
+    const status = document.getElementById("status");
+    status.parentElement.style.display = "block";
+
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const processedData = processImageData(imageData, 'threeColor');
+
+    updateButtonStatus(true);
+
+    let useCRC = (appVersion >= 0x20) && (typeof BleTransfer !== 'undefined');
+    const transferFn = useCRC ? writeImageCRC : writeImage;
+    if (useCRC) addLog("使用CRC校验传输模式");
+
+    const halfLength = Math.floor(processedData.length / 2);
+    const blackWhiteData = processedData.slice(0, halfLength);
+    const redWhiteData = processedData.slice(halfLength);
+
+    await transferFn(blackWhiteData, 'bw');
+    await transferFn(redWhiteData, 'red');
+
+    const refreshOk = await write(EpdCmd.REFRESH);
+    updateButtonStatus();
+
+    if (refreshOk) {
+      const sendTime = (new Date().getTime() - startTime) / 1000.0;
+      addLog(`发送完成！耗时: ${sendTime}s`);
+      setStatus(`发送完成！耗时: ${sendTime}s`);
+      addLog("屏幕刷新完成前请不要操作。");
+    } else {
+      addLog('刷新指令发送失败，请重试。');
+    }
+    status.parentElement.style.display = "none";
+  }
+
+  /**
+   * 渲染"字号对比测试"：把多个字号并排显示，用于发送到设备看哪种最清晰
+   * 关键：整数倍放大（8→16, 10→20, 12→24）应比非整数倍更锐利
+   */
+  renderFontSizeTest(canvas, ctx) {
+    const W = canvas.width;
+    const H = canvas.height;
+    // 每档：{ 字体族, 渲染字号, 标注 }
+    const tests = [
+      { font: 'FusionPixel12', px: 12, label: '12px(12字体)' },
+      { font: 'FusionPixel',   px: 16, label: '16px(8字体x2)' },
+      { font: 'FusionPixel10', px: 20, label: '20px(10字体x2)' },
+      { font: 'FusionPixel12', px: 24, label: '24px(12字体x2)' },
+    ];
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#000000';
+    let y = 14;
+    for (const t of tests) {
+      ctx.font = t.px + 'px "' + t.font + '"';
+      ctx.textBaseline = 'alphabetic';
+      ctx.fillText(t.label + ' 冷藏', 10, y + t.px * 0.8);
+      y += t.px * 1.6;
+    }
+    ctx.font = '12px "FusionPixel12"';
+    ctx.fillStyle = '#888888';
+    ctx.fillText('（发送到设备看清晰度，选区名用字号）', 10, H - 10);
+  }
+
+  /**
+   * 把字号对比测试图渲染到主画布（供发送）
+   */
+  renderFontSizeTestToMain() {
+    this.renderFontSizeTest(canvas, ctx);
+  }
+
+  /**
+   * 发送字号对比测试图到墨水屏
+   */
+  async sendFontSizeTestToScreen() {
+    if (!epdCharacteristic) {
+      addLog("未连接设备，请先连接蓝牙");
+      showToast("请先连接设备");
+      return;
+    }
+    // 确保主画布尺寸
+    const canvasSize = document.getElementById('canvasSize').value;
+    if (canvasSize !== '4.2_400_300') {
+      const sizeSelect = document.getElementById('canvasSize');
+      sizeSelect.value = '4.2_400_300';
+      updateCanvasSize();
+    }
+    document.getElementById('ditherMode').value = 'threeColor';
+
+    // 渲染字号对比测试图到主画布
+    this.renderFontSizeTestToMain();
+
+    startTime = new Date().getTime();
+    const status = document.getElementById("status");
+    status.parentElement.style.display = "block";
+
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const processedData = processImageData(imageData, 'threeColor');
+
+    updateButtonStatus(true);
+
+    let useCRC = (appVersion >= 0x20) && (typeof BleTransfer !== 'undefined');
+    const transferFn = useCRC ? writeImageCRC : writeImage;
+    if (useCRC) addLog("使用CRC校验传输模式");
+
+    const halfLength = Math.floor(processedData.length / 2);
+    const blackWhiteData = processedData.slice(0, halfLength);
+    const redWhiteData = processedData.slice(halfLength);
+
+    await transferFn(blackWhiteData, 'bw');
+    await transferFn(redWhiteData, 'red');
+
+    const refreshOk = await write(EpdCmd.REFRESH);
+    updateButtonStatus();
+
+    if (refreshOk) {
+      const sendTime = (new Date().getTime() - startTime) / 1000.0;
+      addLog(`发送完成！耗时: ${sendTime}s`);
+      setStatus(`发送完成！耗时: ${sendTime}s`);
+      addLog("屏幕刷新完成前请不要操作。");
+    } else {
+      addLog('刷新指令发送失败，请重试。');
+    }
+    status.parentElement.style.display = "none";
   }
 
   /**

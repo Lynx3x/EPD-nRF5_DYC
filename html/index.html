@@ -350,6 +350,11 @@
 						</div>
 						<textarea id="fridge-input" rows="14" placeholder="#冷藏区&#9;饮料&#9;水果&#9;食材&#9;调料&#10;&#9;牛奶&#9;葡萄&#9;洋葱&#9;猪油&#10;&#9;椰子水&#9;李子（应该坏了）&#9;南瓜&#9;油泼辣子" style="width:100%;font-family:monospace;resize:vertical;"></textarea>
 						<div class="fridge-controls">
+							<label for="fridge-style">风格:</label>
+							<select id="fridge-style" onchange="fridgeInventory.setStyle(this.value)">
+								<option value="panel" selected>信息面板</option>
+								<option value="table">表格</option>
+							</select>
 							<button id="fridge-parse-btn" type="button" class="secondary">生成预览</button>
 							<button id="fridge-send-btn" type="button" class="primary">发送到屏幕</button>
 							<span id="fridge-stats" style="font-size:0.85rem;color:var(--secondary-color);"></span>
@@ -359,6 +364,21 @@
 						<div class="fridge-preview">
 							<canvas id="fridge-preview" width="400" height="300"></canvas>
 						</div>
+					</div>
+				</div>
+				<div class="fridge-test" style="margin-top:1.5rem;border-top:1px solid var(--border-color);padding-top:1rem;">
+					<h3>字号满幅测试</h3>
+					<p class="fridge-hint">用各字号把整屏填满文字，观察墨水屏上的观感与信息量（每行字数/总行数）。</p>
+					<div class="fridge-controls">
+						<button type="button" class="test-size-btn" data-size="8">8px</button>
+						<button type="button" class="test-size-btn active" data-size="10">10px</button>
+						<button type="button" class="test-size-btn" data-size="12">12px</button>
+						<button id="fridge-test-send-btn" type="button" class="primary">发送此测试图</button>
+						<button id="fridge-fontsize-send-btn" type="button" class="primary">发送字号对比测试</button>
+					</div>
+					<div class="fridge-test-info" id="fridge-test-info"></div>
+					<div class="fridge-preview">
+						<canvas id="fridge-test-preview" width="400" height="300"></canvas>
 					</div>
 				</div>
 			</section>
