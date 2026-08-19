@@ -1418,4 +1418,8 @@ document.body.onload = () => {
   updateFooterInfo();
   updateOrientationBadge();
   checkDebugMode();
+
+  // 冰箱备忘模块
+  fridgeNote = new FridgeNote();
+  fridgeNote.init();
 }

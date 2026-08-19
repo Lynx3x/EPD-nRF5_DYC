@@ -23,6 +23,104 @@
     box-sizing: border-box;
 }
 
+/* Fusion Pixel Font 缝合像素字体 (8/10/12px) */
+@font-face {
+    font-family: 'FusionPixel';
+    src: url('../fonts/fusion-pixel-8px-monospaced-zh_hans.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'FusionPixel10';
+    src: url('../fonts/fusion-pixel-10px-monospaced-zh_hans.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'FusionPixel12';
+    src: url('../fonts/fusion-pixel-12px-monospaced-zh_hans.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+
+.fridge-section {
+    margin-top: 1.5rem;
+}
+
+.fridge-grid {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.fridge-left,
+.fridge-right {
+    flex: 1 1 300px;
+    min-width: 280px;
+}
+
+.fridge-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.fridge-table th,
+.fridge-table td {
+    border: 1px solid var(--border-color);
+    padding: 0.25rem 0.5rem;
+    text-align: left;
+}
+
+.fridge-table th {
+    background: var(--primary-color);
+    color: #fff;
+    font-weight: 600;
+}
+
+.fridge-table td input {
+    width: 100%;
+    border: none;
+    background: transparent;
+    padding: 0.15rem 0.2rem;
+    font-size: 0.9rem;
+}
+
+.fridge-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-top: 0.75rem;
+}
+
+.fridge-preview canvas {
+    width: 400px;
+    max-width: 100%;
+    height: auto;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: #fff;
+    image-rendering: pixelated;
+}
+
+.fridge-hint {
+    font-size: 0.8rem;
+    color: var(--secondary-color);
+    margin-top: 0.5rem;
+}
+
+.test-size-btn.active {
+    background-color: var(--primary-color);
+    color: #fff;
+    border-color: var(--primary-color);
+}
+
 body {
     margin: 0;
     padding: 0;
