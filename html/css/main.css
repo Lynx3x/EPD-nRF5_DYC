@@ -29,7 +29,7 @@
     src: url('../fonts/fusion-pixel-8px-monospaced-zh_hans.ttf') format('truetype');
     font-weight: normal;
     font-style: normal;
-    font-display: swap;
+    font-display: block;
 }
 
 @font-face {
@@ -37,7 +37,7 @@
     src: url('../fonts/fusion-pixel-10px-monospaced-zh_hans.ttf') format('truetype');
     font-weight: normal;
     font-style: normal;
-    font-display: swap;
+    font-display: block;
 }
 
 @font-face {
@@ -45,7 +45,7 @@
     src: url('../fonts/fusion-pixel-12px-monospaced-zh_hans.ttf') format('truetype');
     font-weight: normal;
     font-style: normal;
-    font-display: swap;
+    font-display: block;
 }
 
 .fridge-section {

@@ -446,6 +446,22 @@ class FridgeNote {
     // 初始预览
     self.refreshPreview();
     self.refreshFillTest();
+
+    // 预加载像素字体：确保字体就绪后再渲染，避免首屏用默认字体导致"残缺"
+    // （12px 字体文件 6.6MB，网络慢时可能加载慢；font-display:block 已避免残缺闪屏，
+    //   这里再主动等字体就绪后重绘一次，彻底消除首屏问题）
+    const fontLoadPromises = [];
+    ['FusionPixel', 'FusionPixel10', 'FusionPixel12'].forEach((fam) => {
+      [8, 10, 12, 14, 16].forEach((px) => {
+        fontLoadPromises.push(document.fonts.load(`${px}px "${fam}"`, '冰箱备忘'));
+      });
+    });
+    Promise.allSettled(fontLoadPromises).then(() => {
+      // 字体全部就绪（或失败），重绘预览
+      self.refreshPreview();
+      self.refreshFillTest();
+      addLog('像素字体加载完成');
+    });
   }
 }
 
