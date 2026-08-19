@@ -522,8 +522,22 @@ class FridgeInventory {
       this.updateStats(null);
       return;
     }
-    this.render(canvas, ctx);
-    this.updateStats(zones);
+    // 渲染前确保字体已加载（12px 字体文件大，手机端网络慢可能未就绪）
+    // 用 try-catch 暴露手机端具体错误
+    try {
+      this.render(canvas, ctx);
+      this.updateStats(zones);
+    } catch (e) {
+      console.error('冰箱库存渲染失败:', e);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, 400, 300);
+      ctx.fillStyle = '#cc0000';
+      ctx.font = '10px "FusionPixel10"';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      ctx.fillText('渲染错误: ' + (e && e.message ? e.message : e), 8, 8);
+      if (typeof addLog === 'function') addLog('冰箱库存渲染错误: ' + (e && e.message ? e.message : e));
+    }
   }
 
   /**
