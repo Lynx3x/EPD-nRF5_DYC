@@ -340,68 +340,28 @@
 				</div>
 			</div>
 		</section>
-		<section class="section fridge-section">
-			<h2>冰箱备忘（像素字）</h2>
-			<p class="fridge-hint">填写六行两列内容，点击"发送到屏幕"，即可用缝合像素字体显示到墨水屏。标题/分隔线用红色（三色屏）。</p>
-			<div class="fridge-grid">
-				<div class="fridge-left">
-					<div class="fridge-controls">
-						<label for="fridge-title">标题:</label>
-						<input type="text" id="fridge-title" value="冰箱备忘" style="width:120px">
-						<label for="fridge-font-size">字号:</label>
-						<select id="fridge-font-size">
-							<option value="8">8px</option>
-							<option value="10" selected>10px</option>
-							<option value="12">12px</option>
-						</select>
-						<label for="fridge-color-mode">颜色:</label>
-						<select id="fridge-color-mode">
-							<option value="threeColor" selected>黑白红三色</option>
-							<option value="blackWhite">纯黑白</option>
-						</select>
+			<section class="section fridge-section">
+				<h2>冰箱库存（像素字表格）</h2>
+				<p class="fridge-hint">从 Excel 复制内容粘贴到下方文本框（第一列用 <code>#区名</code> 标记区，同行后面是分类名，下面各列是条目），点击"生成预览"或"发送到屏幕"。括号内为备注，状态词（坏/补货/剩）自动标红。</p>
+				<div class="fridge-grid">
+					<div class="fridge-left">
+						<div class="fridge-controls">
+							<label>数据源（Excel粘贴）:</label>
+						</div>
+						<textarea id="fridge-input" rows="14" placeholder="#冷藏区&#9;饮料&#9;水果&#9;食材&#9;调料&#10;&#9;牛奶&#9;葡萄&#9;洋葱&#9;猪油&#10;&#9;椰子水&#9;李子（应该坏了）&#9;南瓜&#9;油泼辣子" style="width:100%;font-family:monospace;resize:vertical;"></textarea>
+						<div class="fridge-controls">
+							<button id="fridge-parse-btn" type="button" class="secondary">生成预览</button>
+							<button id="fridge-send-btn" type="button" class="primary">发送到屏幕</button>
+							<span id="fridge-stats" style="font-size:0.85rem;color:var(--secondary-color);"></span>
+						</div>
 					</div>
-					<table class="fridge-table">
-						<thead>
-							<tr>
-								<th>项目名</th>
-								<th>备注</th>
-							</tr>
-						</thead>
-						<tbody id="fridge-table-body">
-							<tr><td><input value="鸡蛋"></td><td><input value="剩 5 个"></td></tr>
-							<tr><td><input value="牛奶"></td><td><input value="快过期"></td></tr>
-							<tr><td><input value="西红柿"></td><td><input value="需购买"></td></tr>
-							<tr><td><input value="黄瓜"></td><td><input value="新鲜"></td></tr>
-							<tr><td><input value="酸奶"></td><td><input value="还有 2 盒"></td></tr>
-							<tr><td><input value="香蕉"></td><td><input value="已熟"></td></tr>
-						</tbody>
-					</table>
-					<div class="fridge-controls">
-						<button id="fridge-preview-btn" type="button" class="secondary">渲染到主画布</button>
-						<button id="fridge-send-btn" type="button" class="primary">发送到屏幕</button>
+					<div class="fridge-right">
+						<div class="fridge-preview">
+							<canvas id="fridge-preview" width="400" height="300"></canvas>
+						</div>
 					</div>
 				</div>
-				<div class="fridge-right">
-					<div class="fridge-preview">
-						<canvas id="fridge-preview" width="400" height="300"></canvas>
-					</div>
-				</div>
-			</div>
-			<div class="fridge-test" style="margin-top:1.5rem;border-top:1px solid var(--border-color);padding-top:1rem;">
-				<h3>字号满幅测试</h3>
-				<p class="fridge-hint">用各字号把整屏填满文字，观察墨水屏上的观感与信息量（每行字数/总行数）。</p>
-				<div class="fridge-controls">
-					<button type="button" class="test-size-btn" data-size="8">8px</button>
-					<button type="button" class="test-size-btn active" data-size="10">10px</button>
-					<button type="button" class="test-size-btn" data-size="12">12px</button>
-					<button id="fridge-test-send-btn" type="button" class="primary">发送此测试图</button>
-				</div>
-				<div class="fridge-test-info" id="fridge-test-info"></div>
-				<div class="fridge-preview">
-					<canvas id="fridge-test-preview" width="400" height="300"></canvas>
-				</div>
-			</div>
-		</section>
+			</section>
 		<div class="footer">
 			<span class="copy" id="footerCopy">&copy;Source from tsl0922, modify by DYC 2025.</span>
 			<span class="copy" id="footerVersion"></span>
@@ -434,7 +394,8 @@
 	<script type="text/javascript" src="js/paint.js?v=20260310c"></script>
 	<script type="text/javascript" src="js/crop.js?v=20260310c"></script>
 	<script type="text/javascript" src="js/ble_transfer.js?v=20260310c"></script>
-	<script type="text/javascript" src="js/fridge_note.js?v=20260310c"></script>
+	<script type="text/javascript" src="js/qrcode.min.js?v=20260310d"></script>
+	<script type="text/javascript" src="js/fridge_inventory.js?v=20260310d"></script>
 	<script type="text/javascript" src="js/main.js?v=20260310c"></script>
 	<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
 </body>

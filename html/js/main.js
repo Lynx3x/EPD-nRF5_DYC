@@ -1419,7 +1419,7 @@ document.body.onload = () => {
   updateOrientationBadge();
   checkDebugMode();
 
-  // 冰箱备忘模块
-  fridgeNote = new FridgeNote();
-  fridgeNote.init();
+  // 冰箱库存模块
+  fridgeInventory = new FridgeInventory();
+  fridgeInventory.init();
 }

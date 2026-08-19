@@ -88,3 +88,5 @@ _build/
 RTE_Components.h
 EventRecorderStub.scvd
 JLinkLog.txt
+# 本地调试测试页（不进正式部署）
+html/_test/
