@@ -92,12 +92,21 @@ class FridgeInventory {
    * @returns {{text: string, note: string|null, noteRed: boolean}}
    */
   parseItem(text) {
-    // 匹配中英文括号内的备注
-    const m = text.match(/^(.*?)[(（]([^)）]*)[)）]$/);
-    if (m && m[1]) {
+    // 中文括号统一转英文括号（更小不占地方）
+    const normalized = text.replace(/（/g, '(').replace(/）/g, ')');
+    const trimmed = normalized.trim();
+
+    // 末尾备注: xxx(备注)
+    let m = trimmed.match(/^(.*?)[(]([^)]*)[)]$/);
+    if (m && m[1].trim()) {
       return { text: m[1].trim(), note: m[2].trim(), noteRed: true };
     }
-    return { text: text.trim(), note: null, noteRed: false };
+    // 前置备注: (备注)xxx
+    m = trimmed.match(/^[(]([^)]*)[)](.*)$/);
+    if (m && m[2].trim()) {
+      return { text: m[2].trim(), note: m[1].trim(), noteRed: true };
+    }
+    return { text: trimmed, note: null, noteRed: false };
   }
 
   // ====== 渲染 ======
