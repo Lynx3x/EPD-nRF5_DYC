@@ -1260,11 +1260,11 @@ class FridgeInventory {
       tmp.height = 400;
       const tmpCtx = tmp.getContext('2d', { willReadFrequently: true });
       this.render(tmp, tmpCtx);
-      // 旋转90°（逆时针）适配到 400x300
-      sendCtx.translate(0, 400);
+      // 旋转90°（逆时针）适配到 400x300：translate(0, tmp.width=300) 使内容填满
+      // 推导：translate(0,300)+rotate(-90°) → tmp(0,0)->(0,300), tmp(300,400)->(400,0)，完美填满
+      sendCtx.translate(0, tmp.width);
       sendCtx.rotate(-Math.PI / 2);
       sendCtx.drawImage(tmp, 0, 0);
-      // 注意：translate/rotate 后 drawImage 的坐标系已旋转
     } else {
       // 横屏：渲染到主画布
       sendCanvas = canvas;
