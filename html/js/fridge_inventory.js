@@ -25,7 +25,8 @@ class FridgeInventory {
     this.NOTE_PX = 10;   // 括号备注小字
     this.zones = [];
     this.title = '冰箱库存';
-    this.style = 'panel'; // 渲染风格: 'table'(表格) / 'panel'(信息面板)
+    this.style = 'panel'; // 渲染风格: 'table'(表格) / 'panel'(信息面板) / 'card'(卡片)
+    this.orientation = 'landscape'; // 方向: 'landscape'(横屏400x300) / 'portrait'(竖屏300x400)
     // 字号满幅测试状态
     this.testSize = 10; // 当前测试字号 (8/10/12)
     // 满幅测试用的文本（去掉标点空白后逐字填屏）
@@ -115,10 +116,14 @@ class FridgeInventory {
    * 渲染入口：根据 this.style 选择风格
    *  - 'table': 原表格风格（区名|分类名|内容 三列，带表格线）
    *  - 'panel': 信息面板风格（区名24px大字，无表格线，留白分区）
+   *  - 'card': 印刷品/分栏卡片风格（每区一个带边框卡片，区名在卡片顶部）
    */
   render(canvas, ctx) {
     if (this.style === 'table') {
       return this.renderStyleTable(canvas, ctx);
+    }
+    if (this.style === 'card') {
+      return this.renderStyleCard(canvas, ctx);
     }
     return this.renderStylePanel(canvas, ctx);
   }
@@ -204,7 +209,8 @@ class FridgeInventory {
         for (const seg of segs) {
           const segW = seg.textW + (seg.noteSeg ? seg.noteSeg.width : 0);
           const sp = curLine.length ? 8 : 0;
-          if (curWidth + sp + segW > maxWidth && curLine.length) {
+          // 超宽就换行（即使当前行空也换，避免单个超长条目累积超框）
+          if (curLine.length && curWidth + sp + segW > maxWidth) {
             rows.push(curLine);
             curLine = [];
             curWidth = 0;
@@ -290,9 +296,183 @@ class FridgeInventory {
   }
 
   /**
-   * 方向 B：原表格风格（区名|分类名|内容 三列，带表格线，合并单元格）
-   * 保留旧版，作为可切换风格之一
+   * 方向 B：印刷品/分栏卡片风格
+   *  - 每个区一个带边框的卡片块
+   *  - 区名在卡片顶部（大字号 + 底部装饰线）
+   *  - 分类名用〔〕括号，内容横排
+   *  - 红色仅备注
    */
+  renderStyleCard(canvas, ctx) {
+    const W = canvas.width;
+    const H = canvas.height;
+    const BODY = this.BODY_PX;
+    const NOTE = this.NOTE_PX;
+    const fontBody = 'FusionPixel12';
+    const fontNote = 'FusionPixel10';
+    const black = '#000000';
+    const red = '#ff0000';
+
+    ctx.imageSmoothingEnabled = false;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, W, H);
+
+    // 布局
+    const margin = 6;
+    const top = 6;
+    const bottom = H - 6;
+    const left = margin;
+    const right = W - margin;
+
+    // 右下角二维码（60px）
+    const QR_SIZE = 60;
+    const qrX = W - QR_SIZE - 8;
+    const qrY = H - QR_SIZE - 8;
+
+    // 标题和正文统一 12px 字体
+    const ZONE_PX = BODY;
+    const zoneFont = fontBody;
+    const rowH = 16;
+    const effRowH = rowH;
+
+    // 分类标记符号
+    const CAT_MARK = '■';
+
+    // 卡片内缩进
+    const cardPad = 4;
+    const ZONE_GAP = 6;
+    const zoneRowH = BODY;
+
+    // 分类名固定列宽（标记+名称），内容从分类名右侧开始，不侵占
+    ctx.font = `${BODY}px "${fontBody}"`;
+    let maxCatW = 0;
+    this.zones.forEach((z) => {
+      z.categories.forEach((c) => {
+        const label = `${CAT_MARK} ${c.name}`;
+        maxCatW = Math.max(maxCatW, ctx.measureText(label).width);
+      });
+    });
+    const catColW = Math.round(maxCatW) + 8; // 分类名列宽
+    const catBoxX = left + cardPad;          // 分类名起点
+    const itemX = catBoxX + catColW;         // 内容列起点（分类名右侧）
+
+    // 布局：每区卡片 = 区名行 + (分类名与内容同行)*
+    const zoneLayouts = [];
+    let totalHeight = 0;
+    for (const zone of this.zones) {
+      const cats = [];
+      let catStartRow = 0;
+      for (const cat of zone.categories) {
+        // 内容列宽 = 卡片右边 - 内容起点
+        const maxWidth = (right - cardPad) - itemX - 4;
+        const rows = [];
+        let curLine = [];
+        let curWidth = 0;
+        const segs = cat.items.map((item) => {
+          const textW = ctx.measureText(item.text).width;
+          let noteSeg = null;
+          if (item.note) {
+            ctx.font = `${NOTE}px "${fontNote}"`;
+            noteSeg = { text: `(${item.note})`, width: ctx.measureText(`(${item.note})`).width };
+            ctx.font = `${BODY}px "${fontBody}"`;
+          }
+          return { item, textW, noteSeg };
+        });
+        for (const seg of segs) {
+          const segW = seg.textW + (seg.noteSeg ? seg.noteSeg.width : 0);
+          const sp = curLine.length ? 8 : 0;
+          if (curLine.length && curWidth + sp + segW > maxWidth) {
+            rows.push(curLine);
+            curLine = [];
+            curWidth = 0;
+          }
+          const gap = curLine.length ? 8 : 0;
+          curWidth += gap + segW;
+          curLine.push(seg);
+        }
+        if (curLine.length) rows.push(curLine);
+        if (!rows.length) rows.push([]);
+        // 分类名与内容同行：占 rows.length 行
+        cats.push({ name: cat.name, rows, rowCount: rows.length, startRow: catStartRow });
+        catStartRow += rows.length;
+      }
+      zoneLayouts.push({ name: zone.name, cats, contentRows: catStartRow });
+      totalHeight += zoneRowH + catStartRow * effRowH + cardPad;
+    }
+    totalHeight += zoneLayouts.length * ZONE_GAP;
+
+    // ---- 绘制 ----
+    let y = top;
+    for (const zone of zoneLayouts) {
+      const cardTop = y;
+      const cardHeight = zoneRowH + zone.contentRows * effRowH + cardPad;
+
+      // 区名（12px，骑在框线上）
+      ctx.font = `${ZONE_PX}px "${zoneFont}"`;
+      const zoneLabelW = ctx.measureText(zone.name).width;
+      const zm2 = ctx.measureText(zone.name);
+      const zAscent2 = zm2.actualBoundingBoxAscent || ZONE_PX;
+      const zDescent2 = zm2.actualBoundingBoxDescent || 0;
+      const lineBreakStart = left + 10;
+      const zoneLabelX = lineBreakStart + 2;
+      const zoneLabelBaseline = cardTop + (zAscent2 - zDescent2) / 2;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(zoneLabelX - 2, cardTop - zAscent2, zoneLabelW + 4, zAscent2 + zDescent2);
+      ctx.textBaseline = 'alphabetic';
+      ctx.textAlign = 'left';
+      ctx.fillStyle = black;
+      ctx.fillText(zone.name, zoneLabelX, zoneLabelBaseline);
+
+      // 卡片边框（上边线在区名处断开）
+      const zoneLeftX = zoneLabelX + zoneLabelW + 4;
+      ctx.strokeStyle = black;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(left, cardTop); ctx.lineTo(lineBreakStart, cardTop);
+      ctx.moveTo(zoneLeftX, cardTop); ctx.lineTo(right, cardTop);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(left, cardTop); ctx.lineTo(left, cardTop + cardHeight);
+      ctx.lineTo(right, cardTop + cardHeight);
+      ctx.lineTo(right, cardTop);
+      ctx.stroke();
+
+      // 分类名与内容同行
+      let yContent = cardTop + zoneRowH - 2;
+      for (const cat of zone.cats) {
+        const catTop = yContent;
+        // 分类名（第一行左侧，固定列宽）
+        ctx.font = `${BODY}px "${fontBody}"`;
+        ctx.textBaseline = 'alphabetic';
+        ctx.textAlign = 'left';
+        ctx.fillStyle = black;
+        const catLabel = `${CAT_MARK} ${cat.name}`;
+        const cm = ctx.measureText(catLabel);
+        const cAscent = cm.actualBoundingBoxAscent || BODY;
+        const cDescent = cm.actualBoundingBoxDescent || 0;
+        const catFirstRowCenter = catTop + effRowH / 2;
+        ctx.fillText(catLabel, catBoxX, catFirstRowCenter + (cAscent - cDescent) / 2);
+
+        // 内容行（从分类名右侧同行开始，换行也不侵占分类名）
+        for (let r = 0; r < cat.rows.length; r++) {
+          const rowTop = catTop + r * effRowH;
+          if (rowTop + effRowH > bottom) break;
+          const inQR = (rowTop + effRowH) > qrY;
+          const rowRight = inQR ? (qrX - 4) : (right - cardPad);
+          const rowItemW = rowRight - itemX;
+          this.drawItemRow(ctx, cat.rows[r], itemX, rowTop, rowItemW, effRowH,
+            BODY, NOTE, fontBody, fontNote, black, red);
+        }
+        yContent = catTop + cat.rowCount * effRowH;
+      }
+      y = cardTop + cardHeight + ZONE_GAP;
+    }
+
+    // ---- 右下角二维码 ----
+    this.drawQRCode(canvas, ctx, W, H, QR_SIZE);
+
+    return { totalHeight: y - top, effRowH };
+  }
+
   renderStyleTable(canvas, ctx) {
     const W = canvas.width;
     const H = canvas.height;
@@ -649,7 +829,20 @@ class FridgeInventory {
    * @param {string} style 'panel' 或 'table'
    */
   setStyle(style) {
-    this.style = (style === 'table') ? 'table' : 'panel';
+    if (style === 'table' || style === 'card') {
+      this.style = style;
+    } else {
+      this.style = 'panel';
+    }
+    this.refreshPreview();
+  }
+
+  /**
+   * 切换横屏/竖屏并刷新预览
+   * 横屏 400x300，竖屏 300x400
+   */
+  setOrientation(orientation) {
+    this.orientation = (orientation === 'portrait') ? 'portrait' : 'landscape';
     this.refreshPreview();
   }
 
@@ -737,18 +930,24 @@ class FridgeInventory {
   refreshPreview() {
     const canvas = document.getElementById('fridge-preview');
     const ctx = canvas.getContext('2d');
-    canvas.width = 400;
-    canvas.height = 300;
+    // 按方向设置画布尺寸：横屏 400x300，竖屏 300x400
+    if (this.orientation === 'portrait') {
+      canvas.width = 300;
+      canvas.height = 400;
+    } else {
+      canvas.width = 400;
+      canvas.height = 300;
+    }
     const zones = this.loadFromInput();
     if (!zones || zones.length === 0) {
-      // 无数据：显示提示
+      // 无数据：显示提示（适配当前方向尺寸）
       ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, 400, 300);
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.fillStyle = '#999999';
       ctx.font = '12px "FusionPixel12"';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText('请粘贴冰箱数据', 200, 150);
+      ctx.fillText('请粘贴冰箱数据', canvas.width / 2, canvas.height / 2);
       this.updateStats(null);
       return;
     }
@@ -1045,23 +1244,39 @@ class FridgeInventory {
       return;
     }
 
-    // 确保主画布尺寸
-    const canvasSize = document.getElementById('canvasSize').value;
-    if (canvasSize !== '4.2_400_300') {
-      const sizeSelect = document.getElementById('canvasSize');
-      sizeSelect.value = '4.2_400_300';
-      updateCanvasSize();
-    }
+    // 发送前准备：横屏直接渲染主画布；竖屏渲染到临时画布并旋转到驱动方向
     document.getElementById('ditherMode').value = 'threeColor';
 
-    // 渲染到主画布
-    this.render(canvas, ctx);
+    let sendCanvas, sendCtx;
+    if (this.orientation === 'portrait') {
+      // 竖屏 300x400 → 旋转90°到驱动 400x300
+      sendCanvas = document.createElement('canvas');
+      sendCanvas.width = 400;
+      sendCanvas.height = 300;
+      sendCtx = sendCanvas.getContext('2d', { willReadFrequently: true });
+      // 先渲染竖屏内容到临时 300x400
+      const tmp = document.createElement('canvas');
+      tmp.width = 300;
+      tmp.height = 400;
+      const tmpCtx = tmp.getContext('2d', { willReadFrequently: true });
+      this.render(tmp, tmpCtx);
+      // 旋转90°（逆时针）适配到 400x300
+      sendCtx.translate(0, 400);
+      sendCtx.rotate(-Math.PI / 2);
+      sendCtx.drawImage(tmp, 0, 0);
+      // 注意：translate/rotate 后 drawImage 的坐标系已旋转
+    } else {
+      // 横屏：渲染到主画布
+      sendCanvas = canvas;
+      sendCtx = ctx;
+      this.render(sendCanvas, sendCtx);
+    }
 
     startTime = new Date().getTime();
     const status = document.getElementById("status");
     status.parentElement.style.display = "block";
 
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const imageData = sendCtx.getImageData(0, 0, sendCanvas.width, sendCanvas.height);
     const processedData = processImageData(imageData, 'threeColor');
 
     updateButtonStatus(true);

@@ -353,7 +353,13 @@
 							<label for="fridge-style">风格:</label>
 							<select id="fridge-style" onchange="fridgeInventory.setStyle(this.value)">
 								<option value="panel" selected>信息面板</option>
+								<option value="card">卡片</option>
 								<option value="table">表格</option>
+							</select>
+							<label for="fridge-orient">方向:</label>
+							<select id="fridge-orient" onchange="fridgeInventory.setOrientation(this.value)">
+								<option value="landscape" selected>横屏</option>
+								<option value="portrait">竖屏</option>
 							</select>
 							<button id="fridge-parse-btn" type="button" class="secondary">生成预览</button>
 							<button id="fridge-send-btn" type="button" class="primary">发送到屏幕</button>
