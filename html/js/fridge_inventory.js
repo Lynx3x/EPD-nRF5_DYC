@@ -342,31 +342,32 @@ class FridgeInventory {
     const ZONE_GAP = 6;
     const zoneRowH = BODY;
 
-    // 分类名固定列宽（标记+名称），内容从分类名右侧开始，不侵占
+    // 分类名起点（每个分类内容紧贴各自分类名右侧，不统一按最长算）
     ctx.font = `${BODY}px "${fontBody}"`;
-    let maxCatW = 0;
-    this.zones.forEach((z) => {
-      z.categories.forEach((c) => {
-        const label = `${CAT_MARK} ${c.name}`;
-        maxCatW = Math.max(maxCatW, ctx.measureText(label).width);
-      });
-    });
-    const catColW = Math.round(maxCatW) + 8; // 分类名列宽
-    const catBoxX = left + cardPad;          // 分类名起点
-    const itemX = catBoxX + catColW;         // 内容列起点（分类名右侧）
+    const catBoxX = left + cardPad; // 分类名起点
 
     // 布局：每区卡片 = 区名行 + (分类名与内容同行)*
     const zoneLayouts = [];
     let totalHeight = 0;
+    let heightSoFar = 0; // 前面所有卡片的累计高度（用于二维码避让y计算）
     for (const zone of this.zones) {
       const cats = [];
       let catStartRow = 0;
+      // 本区内容第一行的全局y基准 = 累计高度 + 区名行高
+      const zoneRowGlobal = heightSoFar + zoneRowH;
       for (const cat of zone.categories) {
-        // 内容列宽 = 卡片右边 - 内容起点
-        const maxWidth = (right - cardPad) - itemX - 4;
+        // 该分类自己的内容起点 = 分类名(■名称)右缘 + 少量
+        const catLabel = `${CAT_MARK} ${cat.name}`;
+        const catLabelW = ctx.measureText(catLabel).width;
+        const itemX_cat = catBoxX + catLabelW + 6;
+        // 内容列宽 = 卡片右边 - 该分类内容起点
+        const maxWidth = (right - cardPad) - itemX_cat - 4;
         const rows = [];
         let curLine = [];
         let curWidth = 0;
+        // 当前行全局y（绝对像素，用于二维码避让判断）
+        // = 本区内容基准y(zoneRowGlobal 已是像素) + 本分类之前分类的行数(catStartRow)*effRowH
+        let rowY = zoneRowGlobal + catStartRow * effRowH; // 该分类第一行内容的绝对y
         const segs = cat.items.map((item) => {
           const textW = ctx.measureText(item.text).width;
           let noteSeg = null;
@@ -380,10 +381,14 @@ class FridgeInventory {
         for (const seg of segs) {
           const segW = seg.textW + (seg.noteSeg ? seg.noteSeg.width : 0);
           const sp = curLine.length ? 8 : 0;
-          if (curLine.length && curWidth + sp + segW > maxWidth) {
+          // 当前行的可用宽度：该行y是否进入二维码垂直范围
+          const inQR = (rowY + effRowH) > qrY;
+          const rowMaxW = inQR ? ((qrX - 4) - itemX_cat) : maxWidth;
+          if (curLine.length && curWidth + sp + segW > rowMaxW) {
             rows.push(curLine);
             curLine = [];
             curWidth = 0;
+            rowY += effRowH;
           }
           const gap = curLine.length ? 8 : 0;
           curWidth += gap + segW;
@@ -391,12 +396,14 @@ class FridgeInventory {
         }
         if (curLine.length) rows.push(curLine);
         if (!rows.length) rows.push([]);
-        // 分类名与内容同行：占 rows.length 行
-        cats.push({ name: cat.name, rows, rowCount: rows.length, startRow: catStartRow });
+        // 分类名与内容同行：占 rows.length 行，记录该分类内容起点 itemX_cat
+        cats.push({ name: cat.name, rows, rowCount: rows.length, itemX: itemX_cat, startRow: catStartRow });
         catStartRow += rows.length;
       }
       zoneLayouts.push({ name: zone.name, cats, contentRows: catStartRow });
       totalHeight += zoneRowH + catStartRow * effRowH + cardPad;
+      // 更新累计高度（供下一区二维码避让y计算）
+      heightSoFar += zoneRowH + catStartRow * effRowH + cardPad + ZONE_GAP;
     }
     totalHeight += zoneLayouts.length * ZONE_GAP;
 
@@ -422,7 +429,7 @@ class FridgeInventory {
       ctx.fillStyle = black;
       ctx.fillText(zone.name, zoneLabelX, zoneLabelBaseline);
 
-      // 卡片边框（上边线在区名处断开）
+      // 卡片边框（单线，上边线在区名处断开）
       const zoneLeftX = zoneLabelX + zoneLabelW + 4;
       ctx.strokeStyle = black;
       ctx.lineWidth = 1;
@@ -452,14 +459,14 @@ class FridgeInventory {
         const catFirstRowCenter = catTop + effRowH / 2;
         ctx.fillText(catLabel, catBoxX, catFirstRowCenter + (cAscent - cDescent) / 2);
 
-        // 内容行（从分类名右侧同行开始，换行也不侵占分类名）
+        // 内容行（从该分类名右侧同行开始，换行也不侵占分类名）
         for (let r = 0; r < cat.rows.length; r++) {
           const rowTop = catTop + r * effRowH;
           if (rowTop + effRowH > bottom) break;
           const inQR = (rowTop + effRowH) > qrY;
           const rowRight = inQR ? (qrX - 4) : (right - cardPad);
-          const rowItemW = rowRight - itemX;
-          this.drawItemRow(ctx, cat.rows[r], itemX, rowTop, rowItemW, effRowH,
+          const rowItemW = rowRight - cat.itemX;
+          this.drawItemRow(ctx, cat.rows[r], cat.itemX, rowTop, rowItemW, effRowH,
             BODY, NOTE, fontBody, fontNote, black, red);
         }
         yContent = catTop + cat.rowCount * effRowH;
@@ -700,6 +707,59 @@ class FridgeInventory {
     }
 
     return { zones: layout.zones, totalRows: layout.totalRows, effRowH };
+  }
+
+  /**
+   * 绘制像素风装饰边框（双线 + 四角L形角花）
+   * 像素放置游戏UI风格，适合墨水屏黑白+少量红
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {number} x 外框左上x
+   * @param {number} y 外框左上y
+   * @param {number} w 外框宽
+   * @param {number} h 外框高
+   * @param {string} color 主色（默认黑）
+   * @param {string} accentColor 角花强调色（默认同主色，可传红）
+   */
+  drawPixelBorder(ctx, x, y, w, h, color = '#000000', accentColor = null) {
+    const c = color;
+    const a = accentColor || color;
+    const gap = 2; // 双线间距
+
+    ctx.fillStyle = c;
+    // 外框线（4条边，1px）
+    ctx.fillRect(x, y, w, 1);            // 上
+    ctx.fillRect(x, y + h - 1, w, 1);    // 下
+    ctx.fillRect(x, y, 1, h);            // 左
+    ctx.fillRect(x + w - 1, y, 1, h);    // 右
+
+    // 内框线（间距 gap）
+    ctx.fillRect(x + gap, y + gap, w - gap * 2, 1);            // 上
+    ctx.fillRect(x + gap, y + h - gap - 1, w - gap * 2, 1);    // 下
+    ctx.fillRect(x + gap, y + gap, 1, h - gap * 2);            // 左
+    ctx.fillRect(x + w - gap - 1, y + gap, 1, h - gap * 2);    // 右
+
+    // 四角 L 形角花（用强调色，内外框在角上相连）
+    ctx.fillStyle = a;
+    // 左上角
+    ctx.fillRect(x, y, 3, 1);
+    ctx.fillRect(x, y, 1, 3);
+    ctx.fillRect(x + gap, y + gap, 2, 1);
+    ctx.fillRect(x + gap, y + gap, 1, 2);
+    // 右上角
+    ctx.fillRect(x + w - 3, y, 3, 1);
+    ctx.fillRect(x + w - 1, y, 1, 3);
+    ctx.fillRect(x + w - gap - 2, y + gap, 2, 1);
+    ctx.fillRect(x + w - gap - 1, y + gap, 1, 2);
+    // 左下角
+    ctx.fillRect(x, y + h - 1, 3, 1);
+    ctx.fillRect(x, y + h - 3, 1, 3);
+    ctx.fillRect(x + gap, y + h - gap - 1, 2, 1);
+    ctx.fillRect(x + gap, y + h - gap - 2, 1, 2);
+    // 右下角
+    ctx.fillRect(x + w - 3, y + h - 1, 3, 1);
+    ctx.fillRect(x + w - 1, y + h - 3, 1, 3);
+    ctx.fillRect(x + w - gap - 2, y + h - gap - 1, 2, 1);
+    ctx.fillRect(x + w - gap - 1, y + h - gap - 2, 1, 2);
   }
 
   /**
