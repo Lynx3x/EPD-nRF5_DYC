@@ -1244,33 +1244,37 @@ class FridgeInventory {
       return;
     }
 
-    // 发送前准备：横屏直接渲染主画布；竖屏渲染到临时画布并旋转到驱动方向
+    // 发送前准备：确保主画布为驱动尺寸 400x300，渲染并旋转到位
     document.getElementById('ditherMode').value = 'threeColor';
+    // 主画布固定为 400x300（驱动方向）
+    if (canvas.width !== 400 || canvas.height !== 300) {
+      canvas.width = 400;
+      canvas.height = 300;
+    }
+    ctx.setTransform(1, 0, 0, 1, 0, 0); // 重置变换
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, 400, 300);
 
-    let sendCanvas, sendCtx;
     if (this.orientation === 'portrait') {
-      // 竖屏 300x400 → 旋转90°到驱动 400x300
-      sendCanvas = document.createElement('canvas');
-      sendCanvas.width = 400;
-      sendCanvas.height = 300;
-      sendCtx = sendCanvas.getContext('2d', { willReadFrequently: true });
-      // 先渲染竖屏内容到临时 300x400
+      // 竖屏：先渲染 300x400，旋转90°后画到主画布(400x300)
       const tmp = document.createElement('canvas');
       tmp.width = 300;
       tmp.height = 400;
       const tmpCtx = tmp.getContext('2d', { willReadFrequently: true });
       this.render(tmp, tmpCtx);
-      // 旋转90°（逆时针）适配到 400x300：translate(0, tmp.width=300) 使内容填满
-      // 推导：translate(0,300)+rotate(-90°) → tmp(0,0)->(0,300), tmp(300,400)->(400,0)，完美填满
-      sendCtx.translate(0, tmp.width);
-      sendCtx.rotate(-Math.PI / 2);
-      sendCtx.drawImage(tmp, 0, 0);
+      // 旋转到 400x300（参考 sendimg 逻辑）
+      ctx.translate(0, 300);
+      ctx.rotate(-Math.PI / 2);
+      ctx.drawImage(tmp, 0, 0);
+      ctx.setTransform(1, 0, 0, 1, 0, 0); // 重置，确保 getImageData 读到的是最终像素
     } else {
-      // 横屏：渲染到主画布
-      sendCanvas = canvas;
-      sendCtx = ctx;
-      this.render(sendCanvas, sendCtx);
+      // 横屏：直接渲染主画布
+      this.render(canvas, ctx);
     }
+
+    // 发送用主画布（与 sendimg 完全一致）
+    const sendCanvas = canvas;
+    const sendCtx = ctx;
 
     startTime = new Date().getTime();
     const status = document.getElementById("status");
