@@ -38,8 +38,8 @@ class FridgeInventory {
   /**
    * 解析 TSV 文本
    * 规则：
-   *  - 行首 `#` → 新区（后面是区名），同行剩余列为分类名表头
-   *  - 其余行：各列数据归入当前区对应分类
+   *  - 行首 `#` → 新区（后面是区名）
+   *  - 其余行：第一列 = 分类名，后面所有非空列 = 该分类的内容（横排）
    * @param {string} tsvText
    * @returns {Array<{name:string, categories:Array<{name:string, items:Array}>}>}
    */
@@ -57,24 +57,19 @@ class FridgeInventory {
         const zoneName = col0.replace(/^#+/, '').trim();
         curZone = { name: zoneName || '区', categories: [] };
         zones.push(curZone);
-        // 同行 col1.. 是分类名表头
-        for (let i = 1; i < cells.length; i++) {
-          if (cells[i]) curZone.categories.push({ name: cells[i], items: [] });
-        }
         continue;
       }
 
-      // 数据行
+      // 分类行：第一列=分类名，后面=内容
       if (!curZone) continue;
+      const catName = col0;
+      if (!catName) continue;
+      const cat = { name: catName, items: [] };
+      curZone.categories.push(cat);
       for (let i = 1; i < cells.length; i++) {
         const cell = cells[i];
         if (!cell) continue;
-        // 若该列还没有对应分类（列数比表头多），补一个分类
-        if (!curZone.categories[i - 1]) {
-          curZone.categories.push({ name: `列${i}`, items: [] });
-        }
-        const cat = curZone.categories[i - 1];
-        if (cat) cat.items.push(this.parseItem(cell));
+        cat.items.push(this.parseItem(cell));
       }
     }
 
