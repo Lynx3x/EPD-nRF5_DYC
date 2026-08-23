@@ -361,6 +361,11 @@
 								<option value="landscape" selected>横屏</option>
 								<option value="portrait">竖屏</option>
 							</select>
+							<label for="fridge-screen">屏幕:</label>
+							<select id="fridge-screen" onchange="fridgeInventory.setScreen(this.value)">
+								<option value="4.2" selected>4.2寸</option>
+								<option value="7.5">7.5寸</option>
+							</select>
 							<button id="fridge-parse-btn" type="button" class="secondary">生成预览</button>
 							<button id="fridge-send-btn" type="button" class="primary">发送到屏幕</button>
 							<span id="fridge-stats" style="font-size:0.85rem;color:var(--secondary-color);"></span>

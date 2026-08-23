@@ -27,6 +27,7 @@ class FridgeInventory {
     this.title = '冰箱库存';
     this.style = 'panel'; // 渲染风格: 'table'(表格) / 'panel'(信息面板) / 'card'(卡片)
     this.orientation = 'landscape'; // 方向: 'landscape'(横屏400x300) / 'portrait'(竖屏300x400)
+    this.screen = '4.2'; // 屏幕尺寸: '4.2'(400x300) / '7.5'(800x480)
     // 字号满幅测试状态
     this.testSize = 10; // 当前测试字号 (8/10/12)
     // 满幅测试用的文本（去掉标点空白后逐字填屏）
@@ -311,22 +312,30 @@ class FridgeInventory {
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, W, H);
 
-    // 布局
+    // 布局：顶部设备名行（占一整行），卡片内容从下方开始
     const margin = 6;
-    const top = 6;
+    const DEVICE_NAME_ROW_H = 20;   // 设备名行高
+    const top = margin + DEVICE_NAME_ROW_H; // 卡片内容起始y（设备名行之下）
     const bottom = H - 6;
     const left = margin;
     const right = W - margin;
 
-    // 右下角二维码（60px）
+    // 右下角二维码（保持60px，不随屏幕放大）
+    const QR_SCALE = 1;
     const QR_SIZE = 60;
     const qrX = W - QR_SIZE - 8;
     const qrY = H - QR_SIZE - 8;
 
-    // 标题和正文统一 12px 字体
-    const ZONE_PX = BODY;
-    const zoneFont = fontBody;
-    const rowH = 16;
+    // 字号方案：7.5寸也用12px正文(FusionPixel12)，字号和布局都不放大
+    // 7.5寸优势：800x480画布大，内容自动排列更多（解决显示面积不足）
+    const is75 = (this.screen === '7.5');
+    const SCALE = 1;             // 不放大布局（7.5寸靠大画布容纳更多内容）
+    const BODY_PX = BODY;        // 正文12px
+    const NOTE_PX = NOTE;        // 备注10px
+    const bodyFontFam = fontBody;
+    const ZONE_PX = BODY_PX;     // 区名与正文同字号
+    const zoneFont = bodyFontFam;
+    const rowH = 16;             // 内容行高16
     const effRowH = rowH;
 
     // 分类标记符号
@@ -335,10 +344,10 @@ class FridgeInventory {
     // 卡片内缩进
     const cardPad = 4;
     const ZONE_GAP = 6;
-    const zoneRowH = BODY;
+    const zoneRowH = BODY_PX;
 
     // 分类名起点（每个分类内容紧贴各自分类名右侧，不统一按最长算）
-    ctx.font = `${BODY}px "${fontBody}"`;
+    ctx.font = `${BODY_PX}px "${bodyFontFam}"`;
     const catBoxX = left + cardPad; // 分类名起点
 
     // 布局：每区卡片 = 区名行 + (分类名与内容同行)*
@@ -367,9 +376,9 @@ class FridgeInventory {
           const textW = ctx.measureText(item.text).width;
           let noteSeg = null;
           if (item.note) {
-            ctx.font = `${NOTE}px "${fontNote}"`;
+            ctx.font = `${NOTE_PX}px "${fontNote}"`;
             noteSeg = { text: `(${item.note})`, width: ctx.measureText(`(${item.note})`).width };
-            ctx.font = `${BODY}px "${fontBody}"`;
+            ctx.font = `${BODY_PX}px "${bodyFontFam}"`;
           }
           return { item, textW, noteSeg };
         });
@@ -403,6 +412,8 @@ class FridgeInventory {
     totalHeight += zoneLayouts.length * ZONE_GAP;
 
     // ---- 绘制 ----
+    // 顶部设备名行（占一整行）
+    this.drawDeviceNameRow(ctx, W, left, right, margin, DEVICE_NAME_ROW_H);
     let y = top;
     for (const zone of zoneLayouts) {
       const cardTop = y;
@@ -443,13 +454,13 @@ class FridgeInventory {
       for (const cat of zone.cats) {
         const catTop = yContent;
         // 分类名（第一行左侧，固定列宽）
-        ctx.font = `${BODY}px "${fontBody}"`;
+        ctx.font = `${BODY_PX}px "${bodyFontFam}"`;
         ctx.textBaseline = 'alphabetic';
         ctx.textAlign = 'left';
         ctx.fillStyle = black;
         const catLabel = `${CAT_MARK} ${cat.name}`;
         const cm = ctx.measureText(catLabel);
-        const cAscent = cm.actualBoundingBoxAscent || BODY;
+        const cAscent = cm.actualBoundingBoxAscent || BODY_PX;
         const cDescent = cm.actualBoundingBoxDescent || 0;
         const catFirstRowCenter = catTop + effRowH / 2;
         ctx.fillText(catLabel, catBoxX, catFirstRowCenter + (cAscent - cDescent) / 2);
@@ -462,7 +473,7 @@ class FridgeInventory {
           const rowRight = inQR ? (qrX - 4) : (right - cardPad);
           const rowItemW = rowRight - cat.itemX;
           this.drawItemRow(ctx, cat.rows[r], cat.itemX, rowTop, rowItemW, effRowH,
-            BODY, NOTE, fontBody, fontNote, black, red);
+            BODY_PX, NOTE_PX, bodyFontFam, fontNote, black, red);
         }
         yContent = catTop + cat.rowCount * effRowH;
       }
@@ -758,6 +769,36 @@ class FridgeInventory {
   }
 
   /**
+   * 绘制顶部设备名行（占一整行，右对齐设备名 + 底部分隔线）
+   * 设备名从全局 bleDevice.name 获取，未连接则显示空行（仍占位）
+   */
+  drawDeviceNameRow(ctx, W, left, right, margin, rowH) {
+    let name = '';
+    try {
+      if (typeof bleDevice !== 'undefined' && bleDevice && bleDevice.name) {
+        name = bleDevice.name;
+      }
+    } catch (e) { /* 忽略 */ }
+    const px = 12; // 设备名字号
+    ctx.font = `${px}px "FusionPixel12"`;
+    ctx.textBaseline = 'alphabetic';
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#000000';
+    // 设备名垂直居中在该行
+    const m = ctx.measureText(name || '设备');
+    const ascent = m.actualBoundingBoxAscent || px;
+    const descent = m.actualBoundingBoxDescent || 0;
+    const centerY = margin + rowH / 2;
+    if (name) {
+      ctx.fillText(name, right, centerY + (ascent - descent) / 2);
+    }
+    ctx.textAlign = 'left';
+    // 底部分隔线（设备名行和内容区分开）
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(left, margin + rowH, right - left, 1);
+  }
+
+  /**
    * 绘制一行内容（正文12px + 括号备注10px标红 + 空格分隔）
    */
   drawItemRow(ctx, rowSegs, x, y, itemColW, rowH, BODY, NOTE, fontBody, fontNote, black, red) {
@@ -902,6 +943,15 @@ class FridgeInventory {
   }
 
   /**
+   * 切换屏幕尺寸并刷新预览
+   * '4.2' → 400x300，'7.5' → 800x480（内容放大）
+   */
+  setScreen(screen) {
+    this.screen = (screen === '7.5') ? '7.5' : '4.2';
+    this.refreshPreview();
+  }
+
+  /**
    * 初始化事件绑定
    */
   init() {
@@ -985,13 +1035,15 @@ class FridgeInventory {
   refreshPreview() {
     const canvas = document.getElementById('fridge-preview');
     const ctx = canvas.getContext('2d');
-    // 按方向设置画布尺寸：横屏 400x300，竖屏 300x400
+    // 按屏幕尺寸 + 方向设置画布尺寸
+    // 4.2寸: 横400x300 竖300x400；7.5寸: 横800x480 竖480x800（2倍）
+    const is75 = (this.screen === '7.5');
     if (this.orientation === 'portrait') {
-      canvas.width = 300;
-      canvas.height = 400;
+      canvas.width = is75 ? 480 : 300;
+      canvas.height = is75 ? 800 : 400;
     } else {
-      canvas.width = 400;
-      canvas.height = 300;
+      canvas.width = is75 ? 800 : 400;
+      canvas.height = is75 ? 480 : 300;
     }
     const zones = this.loadFromInput();
     if (!zones || zones.length === 0) {
@@ -1299,29 +1351,36 @@ class FridgeInventory {
       return;
     }
 
-    // 发送前准备：确保主画布为驱动尺寸 400x300，渲染并旋转到位
+    // 发送前准备：主画布设为驱动尺寸，渲染并旋转到位
     document.getElementById('ditherMode').value = 'threeColor';
-    // 主画布固定为 400x300（驱动方向）
-    if (canvas.width !== 400 || canvas.height !== 300) {
-      canvas.width = 400;
-      canvas.height = 300;
+    // 根据屏幕尺寸确定驱动分辨率：4.2寸 400x300，7.5寸 800x480
+    const is75 = (this.screen === '7.5');
+    const DRV_W = is75 ? 800 : 400;
+    const DRV_H = is75 ? 480 : 300;
+    // 竖屏渲染尺寸（横竖互换）
+    const PRT_W = is75 ? 480 : 300;
+    const PRT_H = is75 ? 800 : 400;
+    // 主画布设为驱动尺寸
+    if (canvas.width !== DRV_W || canvas.height !== DRV_H) {
+      canvas.width = DRV_W;
+      canvas.height = DRV_H;
     }
     ctx.setTransform(1, 0, 0, 1, 0, 0); // 重置变换
     ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, 400, 300);
+    ctx.fillRect(0, 0, DRV_W, DRV_H);
 
     if (this.orientation === 'portrait') {
-      // 竖屏：先渲染 300x400，旋转90°后画到主画布(400x300)
+      // 竖屏：先渲染 竖屏尺寸，旋转90°后画到主画布(驱动尺寸)
       const tmp = document.createElement('canvas');
-      tmp.width = 300;
-      tmp.height = 400;
+      tmp.width = PRT_W;
+      tmp.height = PRT_H;
       const tmpCtx = tmp.getContext('2d', { willReadFrequently: true });
       this.render(tmp, tmpCtx);
-      // 旋转到 400x300（参考 sendimg 逻辑）
-      ctx.translate(0, 300);
+      // 旋转到驱动尺寸（translate 用 tmp 宽度=驱动高度）
+      ctx.translate(0, DRV_H);
       ctx.rotate(-Math.PI / 2);
       ctx.drawImage(tmp, 0, 0);
-      ctx.setTransform(1, 0, 0, 1, 0, 0); // 重置，确保 getImageData 读到的是最终像素
+      ctx.setTransform(1, 0, 0, 1, 0, 0); // 重置，确保 getImageData 读到最终像素
     } else {
       // 横屏：直接渲染主画布
       this.render(canvas, ctx);
