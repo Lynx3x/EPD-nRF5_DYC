@@ -25,9 +25,9 @@ class FridgeInventory {
     this.NOTE_PX = 10;   // 括号备注小字
     this.zones = [];
     this.title = '冰箱库存';
-    this.style = 'panel'; // 渲染风格: 'table'(表格) / 'panel'(信息面板) / 'card'(卡片)
-    this.orientation = 'landscape'; // 方向: 'landscape'(横屏400x300) / 'portrait'(竖屏300x400)
-    this.screen = '4.2'; // 屏幕尺寸: '4.2'(400x300) / '7.5'(800x480)
+    this.style = 'card'; // 渲染风格: 'table'(表格) / 'panel'(信息面板) / 'card'(卡片)
+    this.orientation = 'portrait'; // 方向: 'landscape'(横屏400x300) / 'portrait'(竖屏300x400)
+    this.screen = '7.5'; // 屏幕尺寸: '4.2'(400x300) / '7.5'(800x480)
     // 正文字体/字号（可独立选择，localStorage保存）
     this.body_font = 'FusionPixel12';
     this.body_size = 12;
@@ -319,7 +319,7 @@ class FridgeInventory {
     ctx.fillRect(0, 0, W, H);
 
     // 布局：顶部设备名行（占一整行），卡片内容从下方开始
-    const margin = 6;
+    const margin = 2;   // 顶部边距缩小，设备名更贴顶部
     // 缩放倍数 = 正文字号 / 基准12px，所有布局/行高/间距随字号联动，避免字重叠
     const BODY_PX = this.body_size || BODY;     // 正文字号
     const SCALE = BODY_PX / 12;
@@ -348,7 +348,8 @@ class FridgeInventory {
 
     // 卡片内缩进
     const cardPad = 4 * SCALE;
-    const ZONE_GAP = 6 * SCALE;
+    // 卡片间距：区名骑线会往上冒约1个字号高，间距需足够大避免撞到上一卡片下框线
+    const ZONE_GAP = Math.round(14 * SCALE);
     const zoneRowH = BODY_PX;
 
     // 分类名起点（每个分类内容紧贴各自分类名右侧，不统一按最长算）
@@ -508,20 +509,25 @@ class FridgeInventory {
       FusionPixel12: 'Fusion12', FusionPixel10: 'Fusion10', FusionPixel: 'Fusion8',
       WQY12: '文泉驿12', WQY16: '文泉驿16', Cubic11: '立方体11', Unifont: 'Unifont',
     };
-    // 字体名-字号 用 - 连接，避免 Fusion1212 这种歧义；观致8px 标注为提示字
+    // 字体名-字号 用 - 连接，避免 Fusion1212 这种歧义
     const bodyStr = `${names[bodyF] || bodyF}-${bodyS}`;
     const noteStr = `${names[noteF] || noteF}-${noteS}`;
-    const text = `正文 ${bodyStr} / 备注 ${noteStr} / 系统字 观致-8`;
-    // 观致8px 必须用 8 的整数倍字号（8/16/24...），否则非整数倍会发糊
-    const guanScale = Math.max(1, Math.round(scale));
-    const px = 8 * guanScale;   // 8px 或 16px
-    const fontFam = 'GuanZhi8'; // 观致8px系统提示小字
-    ctx.font = `${px}px "${fontFam}"`;
+    // 系统字用立方体11（Cubic11，矢量像素字体，任意字号清晰）
+    const px = 12 * Math.max(1, Math.round(scale || 1)); // 12px 或 24px
+    const fontFam = 'Cubic11';
     ctx.textBaseline = 'alphabetic';
     ctx.textAlign = 'left';
-    ctx.fillStyle = '#000000'; // 黑色（墨水屏可显示）
-    // 左下角，距边 8px
-    ctx.fillText(text, 8, H - 8);
+    ctx.fillStyle = '#000000';
+    // 最后更新时间（当前时刻，生成/刷新图时）
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const timeStr = `最后更新：${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+    const fontText = `正文 ${bodyStr} / 备注 ${noteStr} / 系统字 立方体-11`;
+    // 左下角，距边 8px：上面更新时间，下面字体信息
+    ctx.font = `${px}px "${fontFam}"`;
+    const lineH = Math.round(px * 1.5);
+    ctx.fillText(timeStr, 8, H - 8 - lineH);
+    ctx.fillText(fontText, 8, H - 8);
   }
 
   renderStyleTable(canvas, ctx) {
@@ -817,8 +823,8 @@ class FridgeInventory {
         name = bleDevice.name;
       }
     } catch (e) { /* 忽略 */ }
-    const px = 12 * (scale || 1); // 设备名字号（按屏幕缩放）
-    ctx.font = `${px}px "FusionPixel12"`;
+    const px = 12 * Math.max(1, Math.round(scale || 1)); // 设备名字号（整数倍，清晰）
+    ctx.font = `${px}px "Cubic11"`; // 设备名用立方体11
     ctx.textBaseline = 'alphabetic';
     ctx.textAlign = 'right';
     ctx.fillStyle = '#000000';
@@ -968,6 +974,7 @@ class FridgeInventory {
     } else {
       this.style = 'panel';
     }
+    try { localStorage.setItem('fridge_style', this.style); } catch (e) {}
     this.refreshPreview();
   }
 
@@ -977,6 +984,7 @@ class FridgeInventory {
    */
   setOrientation(orientation) {
     this.orientation = (orientation === 'portrait') ? 'portrait' : 'landscape';
+    try { localStorage.setItem('fridge_orientation', this.orientation); } catch (e) {}
     this.refreshPreview();
   }
 
@@ -986,6 +994,7 @@ class FridgeInventory {
    */
   setScreen(screen) {
     this.screen = (screen === '7.5') ? '7.5' : '4.2';
+    try { localStorage.setItem('fridge_screen', this.screen); } catch (e) {}
     this.refreshPreview();
   }
 
@@ -1074,6 +1083,28 @@ class FridgeInventory {
           if (el) el.value = String(this[key]);
         }
       });
+    } catch (e) { /* 忽略 */ }
+
+    // 恢复风格/方向/屏幕选项（localStorage），并同步下拉框
+    try {
+      const savedStyle = localStorage.getItem('fridge_style');
+      if (savedStyle === 'table' || savedStyle === 'card' || savedStyle === 'panel') {
+        this.style = savedStyle;
+        const el = document.getElementById('fridge-style');
+        if (el) el.value = savedStyle;
+      }
+      const savedOrient = localStorage.getItem('fridge_orientation');
+      if (savedOrient === 'portrait' || savedOrient === 'landscape') {
+        this.orientation = savedOrient;
+        const el = document.getElementById('fridge-orient');
+        if (el) el.value = savedOrient;
+      }
+      const savedScreen = localStorage.getItem('fridge_screen');
+      if (savedScreen === '7.5' || savedScreen === '4.2') {
+        this.screen = savedScreen;
+        const el = document.getElementById('fridge-screen');
+        if (el) el.value = savedScreen;
+      }
     } catch (e) { /* 忽略 */ }
 
     // 显示当前字体摘要
