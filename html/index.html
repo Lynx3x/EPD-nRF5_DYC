@@ -366,6 +366,37 @@
 								<option value="4.2" selected>4.2寸</option>
 								<option value="7.5">7.5寸</option>
 							</select>
+							<label for="fridge-body-font">正文:</label>
+							<select id="fridge-body-font" onchange="fridgeInventory.setFont('body','font',this.value)">
+								<option value="FusionPixel12" selected>FusionPixel12</option>
+								<option value="FusionPixel">FusionPixel8</option>
+								<option value="FusionPixel10">FusionPixel10</option>
+								<option value="WQY12">文泉驿12</option>
+								<option value="WQY16">文泉驿16</option>
+							
+									<option value="Cubic11">立方体11</option>
+									<option value="Unifont">Unifont</option></select>
+							<select id="fridge-body-size" onchange="fridgeInventory.setFont('body','size',this.value)">
+								<option value="12" selected>12</option>
+								<option value="16">16</option>
+								<option value="20">20</option>
+								<option value="24">24</option>
+							</select>
+							<label for="fridge-note-font">备注:</label>
+							<select id="fridge-note-font" onchange="fridgeInventory.setFont('note','font',this.value)">
+								<option value="FusionPixel12" selected>FusionPixel12</option>
+								<option value="FusionPixel">FusionPixel8</option>
+								<option value="FusionPixel10">FusionPixel10</option>
+								<option value="WQY12">文泉驿12</option>
+								<option value="WQY16">文泉驿16</option>
+							
+									<option value="Cubic11">立方体11</option>
+									<option value="Unifont">Unifont</option></select>
+							<select id="fridge-note-size" onchange="fridgeInventory.setFont('note','size',this.value)">
+								<option value="10" selected>10</option>
+								<option value="12">12</option>
+								<option value="16">16</option>
+							</select>
 							<button id="fridge-parse-btn" type="button" class="secondary">生成预览</button>
 							<button id="fridge-send-btn" type="button" class="primary">发送到屏幕</button>
 							<span id="fridge-stats" style="font-size:0.85rem;color:var(--secondary-color);"></span>

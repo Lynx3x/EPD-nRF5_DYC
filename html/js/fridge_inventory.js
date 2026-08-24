@@ -28,6 +28,12 @@ class FridgeInventory {
     this.style = 'panel'; // 渲染风格: 'table'(表格) / 'panel'(信息面板) / 'card'(卡片)
     this.orientation = 'landscape'; // 方向: 'landscape'(横屏400x300) / 'portrait'(竖屏300x400)
     this.screen = '4.2'; // 屏幕尺寸: '4.2'(400x300) / '7.5'(800x480)
+    // 正文字体/字号（可独立选择，localStorage保存）
+    this.body_font = 'FusionPixel12';
+    this.body_size = 12;
+    // 备注字体/字号
+    this.note_font = 'FusionPixel12';
+    this.note_size = 10;
     // 字号满幅测试状态
     this.testSize = 10; // 当前测试字号 (8/10/12)
     // 满幅测试用的文本（去掉标点空白后逐字填屏）
@@ -314,36 +320,35 @@ class FridgeInventory {
 
     // 布局：顶部设备名行（占一整行），卡片内容从下方开始
     const margin = 6;
-    const DEVICE_NAME_ROW_H = 20;   // 设备名行高
+    // 缩放倍数 = 正文字号 / 基准12px，所有布局/行高/间距随字号联动，避免字重叠
+    const BODY_PX = this.body_size || BODY;     // 正文字号
+    const SCALE = BODY_PX / 12;
+    const DEVICE_NAME_ROW_H = 20 * SCALE;   // 设备名行高
     const top = margin + DEVICE_NAME_ROW_H; // 卡片内容起始y（设备名行之下）
-    const bottom = H - 6;
+    const bottom = H - 6 * SCALE;
     const left = margin;
     const right = W - margin;
 
-    // 右下角二维码（保持60px，不随屏幕放大）
-    const QR_SCALE = 1;
-    const QR_SIZE = 60;
-    const qrX = W - QR_SIZE - 8;
-    const qrY = H - QR_SIZE - 8;
-
-    // 字号方案：7.5寸也用12px正文(FusionPixel12)，字号和布局都不放大
-    // 7.5寸优势：800x480画布大，内容自动排列更多（解决显示面积不足）
-    const is75 = (this.screen === '7.5');
-    const SCALE = 1;             // 不放大布局（7.5寸靠大画布容纳更多内容）
-    const BODY_PX = BODY;        // 正文12px
-    const NOTE_PX = NOTE;        // 备注10px
-    const bodyFontFam = fontBody;
-    const ZONE_PX = BODY_PX;     // 区名与正文同字号
+    // 右下角二维码（按缩放：4.2寸60px，7.5寸120px）
+    const QR_SCALE = SCALE;
+    const QR_SIZE = 60 * QR_SCALE;
+    const qrX = W - QR_SIZE - 8 * QR_SCALE;
+    const qrY = H - QR_SIZE - 8 * QR_SCALE;
+    // 正文/备注字体与字号：用户独立选择（setFont 设置，localStorage保存）
+    const bodyFontFam = this.body_font || fontBody; // 正文字体族
+    const NOTE_PX = this.note_size || NOTE;     // 备注字号
+    const noteFontFam = this.note_font || fontNote; // 备注字体族
+    const ZONE_PX = BODY_PX;        // 区名与正文同字号
     const zoneFont = bodyFontFam;
-    const rowH = 16;             // 内容行高16
+    const rowH = Math.round(16 * SCALE);  // 内容行高随字号缩放（避免字重叠）
     const effRowH = rowH;
 
     // 分类标记符号
     const CAT_MARK = '■';
 
     // 卡片内缩进
-    const cardPad = 4;
-    const ZONE_GAP = 6;
+    const cardPad = 4 * SCALE;
+    const ZONE_GAP = 6 * SCALE;
     const zoneRowH = BODY_PX;
 
     // 分类名起点（每个分类内容紧贴各自分类名右侧，不统一按最长算）
@@ -376,7 +381,7 @@ class FridgeInventory {
           const textW = ctx.measureText(item.text).width;
           let noteSeg = null;
           if (item.note) {
-            ctx.font = `${NOTE_PX}px "${fontNote}"`;
+            ctx.font = `${NOTE_PX}px "${noteFontFam}"`;
             noteSeg = { text: `(${item.note})`, width: ctx.measureText(`(${item.note})`).width };
             ctx.font = `${BODY_PX}px "${bodyFontFam}"`;
           }
@@ -413,7 +418,7 @@ class FridgeInventory {
 
     // ---- 绘制 ----
     // 顶部设备名行（占一整行）
-    this.drawDeviceNameRow(ctx, W, left, right, margin, DEVICE_NAME_ROW_H);
+    this.drawDeviceNameRow(ctx, W, left, right, margin, DEVICE_NAME_ROW_H, SCALE);
     let y = top;
     for (const zone of zoneLayouts) {
       const cardTop = y;
@@ -473,7 +478,7 @@ class FridgeInventory {
           const rowRight = inQR ? (qrX - 4) : (right - cardPad);
           const rowItemW = rowRight - cat.itemX;
           this.drawItemRow(ctx, cat.rows[r], cat.itemX, rowTop, rowItemW, effRowH,
-            BODY_PX, NOTE_PX, bodyFontFam, fontNote, black, red);
+            BODY_PX, NOTE_PX, bodyFontFam, noteFontFam, black, red);
         }
         yContent = catTop + cat.rowCount * effRowH;
       }
@@ -772,14 +777,14 @@ class FridgeInventory {
    * 绘制顶部设备名行（占一整行，右对齐设备名 + 底部分隔线）
    * 设备名从全局 bleDevice.name 获取，未连接则显示空行（仍占位）
    */
-  drawDeviceNameRow(ctx, W, left, right, margin, rowH) {
+  drawDeviceNameRow(ctx, W, left, right, margin, rowH, scale) {
     let name = '';
     try {
       if (typeof bleDevice !== 'undefined' && bleDevice && bleDevice.name) {
         name = bleDevice.name;
       }
     } catch (e) { /* 忽略 */ }
-    const px = 12; // 设备名字号
+    const px = 12 * (scale || 1); // 设备名字号（按屏幕缩放）
     ctx.font = `${px}px "FusionPixel12"`;
     ctx.textBaseline = 'alphabetic';
     ctx.textAlign = 'right';
@@ -952,6 +957,26 @@ class FridgeInventory {
   }
 
   /**
+   * 设置正文/备注的字体或字号，刷新预览并保存
+   * @param {string} which 'body' / 'note'
+   * @param {string} field 'font' / 'size'
+   * @param {string} value 字体族名 或 字号
+   */
+  setFont(which, field, value) {
+    const key = which + '_' + field; // body_font / body_size / note_font / note_size
+    if (field === 'size') {
+      const v = parseFloat(value);
+      this[key] = (isFinite(v) && v > 0) ? v : (which === 'note' ? 10 : 12);
+    } else {
+      this[key] = value;
+    }
+    try {
+      localStorage.setItem('fridge_' + key, String(this[key]));
+    } catch (e) { /* 忽略 */ }
+    this.refreshPreview();
+  }
+
+  /**
    * 初始化事件绑定
    */
   init() {
@@ -976,6 +1001,30 @@ class FridgeInventory {
       });
     }
 
+    // 恢复用户保存的字号缩放
+    // 恢复用户保存的正文/备注字体字号
+    try {
+      const cfg = [
+        ['body_font', 'fridge-body-font'],
+        ['body_size', 'fridge-body-size'],
+        ['note_font', 'fridge-note-font'],
+        ['note_size', 'fridge-note-size'],
+      ];
+      cfg.forEach(([key, elId]) => {
+        const saved = localStorage.getItem('fridge_' + key);
+        if (saved) {
+          if (key.endsWith('_size')) {
+            const v = parseFloat(saved);
+            if (isFinite(v) && v > 0) this[key] = v;
+          } else {
+            this[key] = saved;
+          }
+          const el = document.getElementById(elId);
+          if (el) el.value = String(this[key]);
+        }
+      });
+    } catch (e) { /* 忽略 */ }
+
     // 生成预览
     document.getElementById('fridge-parse-btn').addEventListener('click', () => {
       self.refreshPreview();
@@ -996,6 +1045,14 @@ class FridgeInventory {
         fontLoadPromises.push(document.fonts.load(`${px}px "${fam}"`, '冷藏冰箱库存'));
       });
     });
+    // 文泉驿点阵字体（16px档用）
+    fontLoadPromises.push(document.fonts.load('16px "WQY16"', '冷藏冰箱库存'));
+    fontLoadPromises.push(document.fonts.load('12px "WQY12"', '冷藏冰箱库存'));
+    // 立方体11 + Unifont
+    fontLoadPromises.push(document.fonts.load('16px "Cubic11"', '冷藏冰箱库存'));
+    fontLoadPromises.push(document.fonts.load('12px "Cubic11"', '冷藏冰箱库存'));
+    fontLoadPromises.push(document.fonts.load('16px "Unifont"', '冷藏冰箱库存'));
+    fontLoadPromises.push(document.fonts.load('12px "Unifont"', '冷藏冰箱库存'));
     Promise.allSettled(fontLoadPromises).then(() => {
       self.refreshPreview();
       self.refreshFillTest();

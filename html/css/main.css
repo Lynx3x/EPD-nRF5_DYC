@@ -48,6 +48,41 @@
     font-display: block;
 }
 
+/* 文泉驿点阵宋体（12px/16px 原生位图，用于字号缩放） */
+@font-face {
+    font-family: 'WQY12';
+    src: url('../fonts/WenQuanYi Bitmap Song 12px.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+    font-display: block;
+}
+
+@font-face {
+    font-family: 'WQY16';
+    src: url('../fonts/WenQuanYi Bitmap Song 16px.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+    font-display: block;
+}
+
+/* 立方体11（Cubic 11）方块风像素字体 */
+@font-face {
+    font-family: 'Cubic11';
+    src: url('../fonts/Cubic_11_1.013_R.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+    font-display: block;
+}
+
+/* GNU Unifont 16×16 位图字体 */
+@font-face {
+    font-family: 'Unifont';
+    src: url('../fonts/unifont-17.0.05.otf') format('opentype');
+    font-weight: normal;
+    font-style: normal;
+    font-display: block;
+}
+
 .fridge-section {
     margin-top: 1.5rem;
 }
