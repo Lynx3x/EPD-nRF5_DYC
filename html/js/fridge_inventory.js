@@ -512,7 +512,9 @@ class FridgeInventory {
     const bodyStr = `${names[bodyF] || bodyF}-${bodyS}`;
     const noteStr = `${names[noteF] || noteF}-${noteS}`;
     const text = `正文 ${bodyStr} / 备注 ${noteStr} / 系统字 观致-8`;
-    const px = Math.max(8, Math.round(8 * scale));
+    // 观致8px 必须用 8 的整数倍字号（8/16/24...），否则非整数倍会发糊
+    const guanScale = Math.max(1, Math.round(scale));
+    const px = 8 * guanScale;   // 8px 或 16px
     const fontFam = 'GuanZhi8'; // 观致8px系统提示小字
     ctx.font = `${px}px "${fontFam}"`;
     ctx.textBaseline = 'alphabetic';
