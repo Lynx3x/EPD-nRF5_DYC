@@ -319,15 +319,16 @@ class FridgeInventory {
     ctx.fillRect(0, 0, W, H);
 
     // 布局：顶部设备名行（占一整行），卡片内容从下方开始
-    const margin = 2;   // 顶部边距缩小，设备名更贴顶部
+    const topMargin = 2;    // 顶部边距（设备名更贴顶部）
     // 缩放倍数 = 正文字号 / 基准12px，所有布局/行高/间距随字号联动，避免字重叠
     const BODY_PX = this.body_size || BODY;     // 正文字号
     const SCALE = BODY_PX / 12;
+    const sideMargin = 6 * SCALE; // 左右边距（卡片不贴设备边）
     const DEVICE_NAME_ROW_H = 20 * SCALE;   // 设备名行高
-    const top = margin + DEVICE_NAME_ROW_H; // 卡片内容起始y（设备名行之下）
+    const top = topMargin + DEVICE_NAME_ROW_H; // 卡片内容起始y（设备名行之下）
     const bottom = H - 6 * SCALE;
-    const left = margin;
-    const right = W - margin;
+    const left = sideMargin;
+    const right = W - sideMargin;
 
     // 右下角二维码（按缩放：4.2寸60px，7.5寸120px）
     const QR_SCALE = SCALE;
@@ -419,11 +420,11 @@ class FridgeInventory {
 
     // ---- 绘制 ----
     // 顶部设备名行（占一整行）
-    this.drawDeviceNameRow(ctx, W, left, right, margin, DEVICE_NAME_ROW_H, SCALE);
+    this.drawDeviceNameRow(ctx, W, left, right, topMargin, DEVICE_NAME_ROW_H, SCALE);
     let y = top;
     for (const zone of zoneLayouts) {
-      const cardTop = y;
-      const cardHeight = zoneRowH + zone.contentRows * effRowH + cardPad;
+      const cardTop = Math.round(y); // 取整，保证1px框线落在像素边界，粗细均匀
+      const cardHeight = Math.round(zoneRowH + zone.contentRows * effRowH + cardPad);
 
       // 区名（12px，骑在框线上）
       ctx.font = `${ZONE_PX}px "${zoneFont}"`;
