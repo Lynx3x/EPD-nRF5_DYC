@@ -485,10 +485,41 @@ class FridgeInventory {
       y = cardTop + cardHeight + ZONE_GAP;
     }
 
+    // ---- 底部字体备注（设备上可见当前字体设置）----
+    this.drawFontInfo(canvas, ctx, W, H, SCALE);
+
     // ---- 右下角二维码 ----
     this.drawQRCode(canvas, ctx, W, H, QR_SIZE);
 
     return { totalHeight: y - top, effRowH };
+  }
+
+  /**
+   * 在底部绘制当前字体设置备注（设备上可见）
+   * 位置：左下角，避免与右下角二维码冲突
+   * 用观致8px字体 + 黑色（墨水屏只能显示黑白红，浅灰会失效）
+   */
+  drawFontInfo(canvas, ctx, W, H, scale) {
+    const bodyF = this.body_font || 'FusionPixel12';
+    const noteF = this.note_font || 'FusionPixel12';
+    const bodyS = this.body_size || 12;
+    const noteS = this.note_size || 10;
+    const names = {
+      FusionPixel12: 'Fusion12', FusionPixel10: 'Fusion10', FusionPixel: 'Fusion8',
+      WQY12: '文泉驿12', WQY16: '文泉驿16', Cubic11: '立方体11', Unifont: 'Unifont',
+    };
+    // 字体名-字号 用 - 连接，避免 Fusion1212 这种歧义；观致8px 标注为提示字
+    const bodyStr = `${names[bodyF] || bodyF}-${bodyS}`;
+    const noteStr = `${names[noteF] || noteF}-${noteS}`;
+    const text = `正文 ${bodyStr} / 备注 ${noteStr} / 系统字 观致-8`;
+    const px = Math.max(8, Math.round(8 * scale));
+    const fontFam = 'GuanZhi8'; // 观致8px系统提示小字
+    ctx.font = `${px}px "${fontFam}"`;
+    ctx.textBaseline = 'alphabetic';
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#000000'; // 黑色（墨水屏可显示）
+    // 左下角，距边 8px
+    ctx.fillText(text, 8, H - 8);
   }
 
   renderStyleTable(canvas, ctx) {
@@ -974,6 +1005,24 @@ class FridgeInventory {
       localStorage.setItem('fridge_' + key, String(this[key]));
     } catch (e) { /* 忽略 */ }
     this.refreshPreview();
+    this.updateFontInfo();
+  }
+
+  /**
+   * 更新页面下方的当前字体摘要
+   */
+  updateFontInfo() {
+    const el = document.getElementById('fridge-fontinfo');
+    if (!el) return;
+    const fmt = (fam, px) => {
+      // 字体族友好名
+      const names = {
+        FusionPixel12: 'FusionPixel12', FusionPixel10: 'FusionPixel10', FusionPixel: 'FusionPixel8',
+        WQY12: '文泉驿12', WQY16: '文泉驿16', Cubic11: '立方体11', Unifont: 'Unifont',
+      };
+      return (names[fam] || fam) + ' ' + px + 'px';
+    };
+    el.textContent = '当前字体: 正文 ' + fmt(this.body_font, this.body_size) + ' · 备注 ' + fmt(this.note_font, this.note_size);
   }
 
   /**
@@ -1025,6 +1074,9 @@ class FridgeInventory {
       });
     } catch (e) { /* 忽略 */ }
 
+    // 显示当前字体摘要
+    this.updateFontInfo();
+
     // 生成预览
     document.getElementById('fridge-parse-btn').addEventListener('click', () => {
       self.refreshPreview();
@@ -1053,6 +1105,8 @@ class FridgeInventory {
     fontLoadPromises.push(document.fonts.load('12px "Cubic11"', '冷藏冰箱库存'));
     fontLoadPromises.push(document.fonts.load('16px "Unifont"', '冷藏冰箱库存'));
     fontLoadPromises.push(document.fonts.load('12px "Unifont"', '冷藏冰箱库存'));
+    // 观致8px（系统提示小字）
+    fontLoadPromises.push(document.fonts.load('8px "GuanZhi8"', '字体'));
     Promise.allSettled(fontLoadPromises).then(() => {
       self.refreshPreview();
       self.refreshFillTest();

@@ -83,6 +83,15 @@
     font-display: block;
 }
 
+/* 观致8px（GuanZhi-8px）系统提示小字 */
+@font-face {
+    font-family: 'GuanZhi8';
+    src: url('../fonts/观致8px字体 GuanZhi-8px.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+    font-display: block;
+}
+
 .fridge-section {
     margin-top: 1.5rem;
 }
