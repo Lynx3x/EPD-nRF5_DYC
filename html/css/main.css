@@ -86,7 +86,7 @@
 /* 观致8px（GuanZhi-8px）系统提示小字 */
 @font-face {
     font-family: 'GuanZhi8';
-    src: url('../fonts/观致8px字体 GuanZhi-8px.ttf') format('truetype');
+    src: url('../fonts/guanzhi-8px.ttf') format('truetype');
     font-weight: normal;
     font-style: normal;
     font-display: block;
@@ -141,6 +141,21 @@
     gap: 0.75rem;
     flex-wrap: wrap;
     margin-top: 0.75rem;
+}
+
+/* 字体加载状态提示（canvas 不受 font-display:block 保护，未加载完会静默回退系统字体） */
+.fridge-fontstatus {
+    margin-top: 0.75rem;
+    font-size: 0.85rem;
+    color: var(--secondary-color);
+}
+
+.fridge-fontstatus.ok {
+    color: #2e7d32;
+}
+
+.fridge-fontstatus.error {
+    color: #dc2626;
 }
 
 .fridge-preview canvas {

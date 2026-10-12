@@ -1124,24 +1124,50 @@ class FridgeInventory {
     // 初始预览（恢复缓存后渲染，不再空白）
     this.refreshPreview();
 
-    // 预加载像素字体
-    const fontLoadPromises = [];
-    ['FusionPixel', 'FusionPixel10', 'FusionPixel12'].forEach((fam) => {
-      [8, 10, 12, 16, 20, 24].forEach((px) => {
-        fontLoadPromises.push(document.fonts.load(`${px}px "${fam}"`, '冷藏冰箱库存'));
-      });
-    });
-    // 文泉驿点阵字体（16px档用）
-    fontLoadPromises.push(document.fonts.load('16px "WQY16"', '冷藏冰箱库存'));
-    fontLoadPromises.push(document.fonts.load('12px "WQY12"', '冷藏冰箱库存'));
-    // 立方体11 + Unifont
-    fontLoadPromises.push(document.fonts.load('16px "Cubic11"', '冷藏冰箱库存'));
-    fontLoadPromises.push(document.fonts.load('12px "Cubic11"', '冷藏冰箱库存'));
-    fontLoadPromises.push(document.fonts.load('16px "Unifont"', '冷藏冰箱库存'));
-    fontLoadPromises.push(document.fonts.load('12px "Unifont"', '冷藏冰箱库存'));
-    // 观致8px（系统提示小字）
-    fontLoadPromises.push(document.fonts.load('8px "GuanZhi8"', '字体'));
-    Promise.allSettled(fontLoadPromises).then(() => {
+    // 预加载像素字体，并在界面上显示加载状态。
+    // 注意：canvas 绘制不受 font-display:block 保护，字体未就绪时 ctx.font 会静默
+    // 回退系统字体（不报错），网络慢时用户可能没等字体加载完就点"发送到屏幕"，
+    // 导致屏幕显示的是系统字体。所以给每个字体族单独跟踪状态并明示。
+    const fontSpecs = [
+      { label: 'FusionPixel8', fam: 'FusionPixel', px: [8, 10, 12, 16, 20, 24], text: '冷藏冰箱库存' },
+      { label: 'FusionPixel10', fam: 'FusionPixel10', px: [8, 10, 12, 16, 20, 24], text: '冷藏冰箱库存' },
+      { label: 'FusionPixel12', fam: 'FusionPixel12', px: [8, 10, 12, 16, 20, 24], text: '冷藏冰箱库存' },
+      { label: 'WQY16', fam: 'WQY16', px: [16], text: '冷藏冰箱库存' },
+      { label: 'WQY12', fam: 'WQY12', px: [12], text: '冷藏冰箱库存' },
+      { label: 'Cubic11', fam: 'Cubic11', px: [16, 12], text: '冷藏冰箱库存' },
+      { label: 'Unifont', fam: 'Unifont', px: [16, 12], text: '冷藏冰箱库存' },
+      { label: 'GuanZhi8', fam: 'GuanZhi8', px: [8], text: '字体' },
+    ];
+    const fontStatusEl = document.getElementById('fridge-font-status');
+    const renderFontStatus = (doneCount, failedLabels) => {
+      if (!fontStatusEl) return;
+      fontStatusEl.classList.remove('ok', 'error');
+      if (doneCount < fontSpecs.length) {
+        fontStatusEl.textContent = `字体加载中… ${doneCount}/${fontSpecs.length}`;
+      } else if (failedLabels.length > 0) {
+        fontStatusEl.classList.add('error');
+        fontStatusEl.textContent = `字体加载失败: ${failedLabels.join('、')}（使用这些字体发送时屏幕上会显示为系统字体，请刷新重试）`;
+      } else {
+        fontStatusEl.classList.add('ok');
+        fontStatusEl.textContent = `字体已就绪（${fontSpecs.length}/${fontSpecs.length}）`;
+      }
+    };
+    renderFontStatus(0, []);
+    let fontDoneCount = 0;
+    const fontFailedLabels = [];
+    const fontFamilyPromises = fontSpecs.map((spec) =>
+      Promise.all(spec.px.map((px) => document.fonts.load(`${px}px "${spec.fam}"`, spec.text)))
+        .then((results) => {
+          // load() 对未在 CSS 声明的字体族会静默返回空数组，一并视为失败
+          if (results.some((faces) => faces.length === 0)) fontFailedLabels.push(spec.label);
+        })
+        .catch(() => { fontFailedLabels.push(spec.label); })
+        .finally(() => {
+          fontDoneCount++;
+          renderFontStatus(fontDoneCount, fontFailedLabels);
+        })
+    );
+    Promise.all(fontFamilyPromises).then(() => {
       self.refreshPreview();
       self.refreshFillTest();
     });
